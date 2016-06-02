@@ -1,0 +1,76 @@
+**Private allele analysis**
+
+===
+
+Script by Lotte van Boheemen
+
+Last edit 
+
+```{r}
+# Fri Mar 25 17:28:45 2016 ------------------------------
+```
+
+
+
+Load in data and read STRUCTURE infiles
+```{r, include=FALSE}
+library(adegenet) #read.structure & basic stats
+library(hierfstat) #pairwise Fst
+library(ggplot2) #plotting
+library(rgdal) #dependency of PopGenReport
+library(PopGenReport) #other package for basic stats
+library(pegas)
+```
+
+---
+
+Read in the STRUCTURE files, which will transform it to a genind object. In this case I am using the complete set of SNPs to increase the number of finding private alleles, but will use the SNP set with stringent filtering (>50% SNP call rate) to reduce the chance of having bad calls in the SNP table.
+```{r}
+eu_allsnp240<-read.structure("eu199_allsnp240.stru", n.ind=199, n.loc=10100, onerowperind=FALSE, col.lab=1, col.pop=2, row.marknames=1, NA.char="-9", pop=36, ask=FALSE, quiet=FALSE)
+nar_allsnp240<-read.structure("nar232_allsnp240.stru", n.ind=232, n.loc=10100, onerowperind=FALSE, col.lab=1, col.pop=2, row.marknames=1,NA.char="-9", pop=42, ask=FALSE, quiet=FALSE)
+au_allsnp240<-read.structure("au42_allsnp240.stru", n.ind=42, n.loc=10100, onerowperind=FALSE, col.lab=1, col.pop=2, row.marknames=1,NA.char="-9", pop=7,  ask=FALSE, quiet=FALSE)
+```
+
+Transform some of the information
+```{r}
+euother<-read.table("eu199_other.txt",header=T)
+eu_allsnp240@other <- as.data.frame(euother[,1:6])
+strata(eu_allsnp240)<-data.frame(eu_allsnp240@other[,3:4])
+eu_allsnp240@pop<-eu_allsnp240@other[,1]
+eu_allsnp240@other$latlong<-data.frame(eu_allsnp240@other[,5:6])
+
+narother<-read.table("nar232_other.txt",header=T)
+nar_allsnp240@other <- as.data.frame(narother[,1:6])
+strata(nar_allsnp240)<-data.frame(nar_allsnp240@other[,3:4])
+nar_allsnp240@pop<-nar_allsnp240@other[,1]
+nar_allsnp240@other$latlong<-data.frame(nar_allsnp240@other[,5:6])
+
+auother<-read.table("au41_other.txt",header=T)
+au_allsnp240@other <- as.data.frame(auother[,1:6])
+strata(au_allsnp240)<-data.frame(au_allsnp240$other[,3:4])
+au_allsnp240@pop<-au_allsnp240@other[,1]
+au_allsnp240@other$latlong<-data.frame(au_allsnp240@other[,5:6])
+```
+
+```{r}
+nar.out1<- popgenreport(nar_allsnp240,mk.allele.dist=TRUE, mk.pdf = TRUE,foldername = 'popgen_nar')
+eu.out1<- popgenreport(eu_allsnp240,mk.allele.dist=TRUE, mk.pdf = TRUE,foldername = 'popgen_eu')
+au.out1<- popgenreport(au_allsnp240,mk.allele.dist=TRUE, mk.pdf = TRUE,foldername = 'popgen_au')
+```
+
+data(Pinf) # Load P. infestans data.
+private_alleles(Pinf)
+## Not run:
+# Analyze private alleles based on the country of interest:
+private_alleles(Pinf, alleles ~ Country)
+# Number of observed alleles per locus
+private_alleles(Pinf, locus ~ Country, count.alleles = TRUE)
+# Get raw number of private alleles per locus.
+(pal <- private_alleles(Pinf, locus ~ Country, count.alleles = FALSE))
+# Get percentages.
+sweep(pal, 2, nAll(Pinf)[colnames(pal)], FUN = "/")
+# An example of how these data can be displayed.
+library("ggplot2")
+Pinfpriv <- private_alleles(Pinf, report = "data.frame")
+ggplot(Pinfpriv) + geom_tile(aes(x = population, y = allele, fill = count))
+

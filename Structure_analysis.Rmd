@@ -1,0 +1,156 @@
+Structure analysis
+========================================================
+
+```{r, include=FALSE}
+library(ggplot2)
+```
+
+###############################################################
+plotting evanno data after applying structureHarvester.py
+High deltaK of 2 might be artificial due to extremely low likelhoods of K = 1. Vigouroux et al 2008
+
+Read in data
+```{r}
+evanno_all = read.table("all_evanno.txt",header=F,comment.char='#')
+evanno_allr = read.table("allcra_evanno.txt",header=F,comment.char='#')
+evanno_eu = read.table("eu_evanno.txt",header=F,comment.char='#')
+evanno_nar = read.table("nacra_evanno.txt",header=F,comment.char='#')
+evanno_au = read.table("au_evanno.txt",header=F,comment.char='#')
+evanno_auwes = read.table("auwes_evanno.txt",header=F,comment.char='#')
+
+names(evanno_all) = c("K","reps","mean_LnPK",  "sd_LnPK",  "Ln1K",	"Ln2K",	"Delta_K")
+names(evanno_allr) = c("K","reps","mean_LnPK",  "sd_LnPK",  "Ln1K",	"Ln2K",	"Delta_K")
+names(evanno_eu) = c("K","reps","mean_LnPK",  "sd_LnPK",  "Ln1K",	"Ln2K",	"Delta_K")
+names(evanno_nar) = c("K","reps","mean_LnPK",  "sd_LnPK",  "Ln1K",	"Ln2K",	"Delta_K")
+names(evanno_au) = c("K","reps","mean_LnPK",  "sd_LnPK",  "Ln1K",	"Ln2K",	"Delta_K")
+names(evanno_auwes) = c("K","reps","mean_LnPK",  "sd_LnPK",  "Ln1K",	"Ln2K",	"Delta_K")
+ylab_name<-expression(paste(Delta,"K"))
+```
+
+Entire dataset (including KSAP and AP1)
+```{r}
+all_title<-expression(paste("All samples, including ", italic("A. psilostachya")))
+all_Klog<-ggplot(evanno_all, aes(x=K, y=mean_LnPK)) + 
+  geom_errorbar(aes(ymin=mean_LnPK-sd_LnPK, ymax=mean_LnPK+sd_LnPK), width=.1) + geom_line() + geom_point() + scale_y_continuous(name="ln Pr(X|K)") + 
+  scale_x_continuous(breaks=seq(2, 10,1),name="")+  
+ggtitle(all_title) + theme_classic()
+
+all_dK<-ggplot(evanno_all, aes(x=K, y=Delta_K)) + geom_line() + geom_point()+ scale_y_continuous(name=ylab_name)+ scale_x_continuous(breaks=seq(2, 10,1),name="Number of inferred clusters K") + theme_classic()
+```
+
+
+Entire dataset (common ragweed only)
+```{r}
+titlename<-expression(paste("All ", italic("A. artemisiifolia "), "samples"))
+allr_Klog<-ggplot(evanno_allr, aes(x=K, y=mean_LnPK)) + 
+  geom_errorbar(aes(ymin=mean_LnPK-sd_LnPK, ymax=mean_LnPK+sd_LnPK), width=.1) + geom_line() + geom_point() + scale_y_continuous(name=" ln Pr(X|K)") + 
+  scale_x_continuous(breaks=seq(2, 10,1),name="")+ 
+  geom_line() + geom_point() +
+  ggtitle(titlename) + theme_classic()
+
+allr_dK<-ggplot(evanno_allr, aes(x=K, y=Delta_K)) + geom_line() + geom_point() +
+   scale_y_continuous(name=ylab_name)+ 
+  scale_x_continuous(breaks=seq(2, 10,1),name="Number of inferred clusters K") +
+  theme_classic()
+```
+
+
+North America (common ragweed only)
+```{r}
+nar_Klog<- ggplot(evanno_nar, aes(x=K, y=mean_LnPK)) + 
+  geom_errorbar(aes(ymin=mean_LnPK-sd_LnPK, ymax=mean_LnPK+sd_LnPK), width=.1) + geom_line() + geom_point() + scale_y_continuous(name="") + 
+  scale_x_continuous(breaks=seq(2, 10,1),name="")+    
+  geom_line() + geom_point() +
+ ggtitle("Native range, North America") + theme_classic()
+
+nar_dK<- ggplot(evanno_nar, aes(x=K, y=Delta_K)) + geom_line() + geom_point() +
+  scale_y_continuous(name="")+ 
+  scale_x_continuous(breaks=seq(2, 10,1),name="Number of inferred clusters K") + 
+  theme_classic()
+```
+
+Europe
+```{r}
+eu_Klog<- ggplot(evanno_eu, aes(x=K, y=mean_LnPK)) + 
+  geom_errorbar(aes(ymin=mean_LnPK-sd_LnPK, ymax=mean_LnPK+sd_LnPK), width=.1) + geom_line() + geom_point() + 
+  scale_y_continuous(name="") + 
+  scale_x_continuous(breaks=seq(2, 10,1),name="")+ 
+  ggtitle("Introduced range, Europe") + theme_classic()
+
+eu_dK<- ggplot(evanno_eu, aes(x=K, y=Delta_K)) + geom_line() + geom_point()+ scale_y_continuous(name="")+ scale_x_continuous(breaks=seq(2, 10,1),name="Number of inferred clusters K") +theme_classic()
+```
+
+Australia, common ragweed only
+```{r}
+au_Klog<- ggplot(evanno_au, aes(x=K, y=mean_LnPK)) + 
+  geom_errorbar(aes(ymin=mean_LnPK-sd_LnPK, ymax=mean_LnPK+sd_LnPK), width=.1) + geom_line() + geom_point() + scale_y_continuous(name="") +
+  scale_x_continuous(breaks=seq(2, 10,1),name="")+  
+  ggtitle("Introduced range, Australia") + theme_classic()
+
+au_dK<- ggplot(evanno_au, aes(x=K, y=Delta_K)) + geom_line() + geom_point() + scale_y_continuous(name="")+ scale_x_continuous(breaks=seq(2, 10,1),name="Number of inferred clusters K")  + theme_classic()
+```
+
+Australia + western ragweed
+```{r}
+auwes_Klog<- ggplot(evanno_auwes, aes(x=K, y=mean_LnPK)) + 
+  geom_errorbar(aes(ymin=mean_LnPK-sd_LnPK, ymax=mean_LnPK+sd_LnPK), width=.1) + geom_line() + geom_point() + scale_y_continuous(name="") +
+  scale_x_continuous(breaks=seq(2, 10,1),name="")+  
+  ggtitle("Introduced range, Australia & A. psilostachya") + theme_classic()
+
+auwes_dK<- ggplot(evanno_auwes, aes(x=K, y=Delta_K)) + geom_line() + geom_point() + scale_y_continuous(name="")+ scale_x_continuous(breaks=seq(2, 10,1),name="Number of inferred clusters K")  + theme_classic()
+```
+
+Set definitions and plot
+```{r}
+# Multiple plot function
+#
+# ggplot objects can be passed in ..., or to plotlist (as a list of ggplot objects)
+# - cols:   Number of columns in layout
+# - layout: A matrix specifying the layout. If present, 'cols' is ignored.
+#
+# If the layout is something like matrix(c(1,2,3,3), nrow=2, byrow=TRUE),
+# then plot 1 will go in the upper left, 2 will go in the upper right, and
+# 3 will go all the way across the bottom.
+#
+multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
+  require(grid)
+
+  
+  # Make a list from the ... arguments and plotlist
+  plots <- c(list(...), plotlist)
+
+  numPlots = length(plots)
+
+  # If layout is NULL, then use 'cols' to determine layout
+  if (is.null(layout)) {
+    # Make the panel
+    # ncol: Number of columns of plots
+    # nrow: Number of rows needed, calculated from # of cols
+    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                    ncol = cols, nrow = ceiling(numPlots/cols))
+  }
+
+ if (numPlots==1) {
+    print(plots[[1]])
+
+  } else {
+    # Set up the page
+    grid.newpage()
+    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
+
+    # Make each plot, in the correct location
+    for (i in 1:numPlots) {
+      # Get the i,j matrix positions of the regions that contain this subplot
+      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
+
+      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
+                                      layout.pos.col = matchidx$col))
+    }
+  }
+}
+pdf("evanno_craplots.pdf", width=20, height=10)
+print(multiplot(all_Klog,all_dK,nar_Klog,nar_dK,eu_Klog,eu_dK,au_Klog,au_dK,cols=4))
+dev.off()
+
+```
+```

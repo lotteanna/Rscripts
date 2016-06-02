@@ -1,0 +1,135 @@
+---
+title: "Rmaps"
+---
+
+From Kim Gilbert, at:
+http://www.molecularecologist.com/2012/09/making-maps-with-r/
+
+Q population values are derived from Structure, StructureHarvester and Clumpp results (K*.popq files)
+```{r}
+library(maps)
+library(mapdata)
+library(maptools)  #for shapefiles
+library(mapplots)
+library(scales)
+```
+
+
+
+Read in sample points
+```{r}
+q_all_K2<-read.table("popq_all_K2.txt",header=T)
+q_all_K4<-read.table("popq_all_K4.txt",header=T)
+q_eu_K4<-read.table("popq_eu_K4.txt",header=T)
+q_au_K4<-read.table("popq_au_K4.txt",header=T)
+```
+
+Setting up graphics device
+```{r}
+quartz()
+```
+Load map (this can better be drawn for every specific part I want to plot)
+```{r}
+map(database="worldHires",  xlim=c(-110,-60), ylim=c(30,55)) #North America
+map(database="worldHires",  xlim=c(-1,30), ylim=c(42,58)) #Europe
+map(database="worldHires",  xlim=c(149,156), ylim=c(-38,-25)) #Australia
+map(database="worldHires",  xlim=c(-110,156), ylim=c(-38,60)) #world
+```
+
+Here, xlim is longitude, ylim is latitude
+
+For all pops (no KSAP or AP1), K=2 (for Europe I use factor 0.02 for N size, 0.07 for Na. )
+
+```{r}
+points(q_all_K2$Long,q_all_K2$Lat)
+long<-q_all_K2$Long
+lats<-q_all_K2$Lat
+Q<-q_all_K2$Q
+P<-q_all_K2$P
+N<-sqrt(q_all_K2$Sample_size*0.02)
+lab=q_all_K2$PopID
+for(i in 1:85) {
+                add.pie(z=c(Q[i], P[i]), x=long[i], y=lats[i], radius=N[i], 
+                labels=lab[i], cex=0.7, label.dist=2, clockwise=FALSE, 
+                col=c(alpha("orange", 0.5), alpha("blue", 0.5)))
+}
+```
+
+North America only (k=2)
+```{r}
+points(q_na_K2$lon,q_na_K2$lat)
+long<-q_na_K2$lon
+lats<-q_na_K2$lat
+Q<-q_na_K2$Q
+P<-q_na_K2$P
+N<-sqrt(q_na_K2$sample_size*0.02)
+lab=q_na_K2$popID
+for(i in 1:85) {
+add.pie(z=c(Q[i], P[i]), x=long[i], y=lats[i], radius=N[i], labels=lab[i], cex=0.7,label.dist=2,clockwise=FALSE,col=c(alpha("orange", 0.5), alpha("blue", 0.5)))
+}
+```
+
+Europe only (K=2)
+```{r}
+points(q_eu_K2$lon,q_eu_K2$lat)
+long<-q_eu_K2$lon
+lats<-q_eu_K2$lat
+Q<-q_eu_K2$Q
+P<-q_eu_K2$P
+N<-sqrt(q_eu_K2$sample_size*0.02)
+lab=q_eu_K2$popID
+for(i in 1:85) {
+add.pie(z=c(Q[i], P[i]), x=long[i], y=lats[i], radius=N[i], labels=lab[i], cex=0.7,label.dist=2,clockwise=FALSE,col=c(alpha("orange", 0.5), alpha("blue", 0.5)))
+}
+```
+
+Australia only (K=2)
+```{r}
+points(q_au_K2$lon,q_au_K2$lat)
+long<-q_au_K2$lon
+lats<-q_au_K2$lat
+Q<-q_au_K2$Q
+P<-q_au_K2$P
+N<-sqrt(q_au_K2$sample_size*0.02)
+lab=q_au_K2$popID
+for(i in 1:85) {
+add.pie(z=c(Q[i], P[i]), x=long[i], y=lats[i], radius=N[i], labels=lab[i], cex=0.7,label.dist=2,clockwise=FALSE,col=c(alpha("orange", 0.5), alpha("blue", 0.5)))
+}
+```
+
+For all pops (no KSAP or AP1), K=4
+```{r}
+points(q_allr_K4$lon,q_allr_K4$lat)
+long2<-q_allr_K4$lon
+lats2<-q_allr_K4$lat
+Q2<-q_allr_K4$Q
+P2<-q_allr_K4$P
+R2<-q_allr_K4$R
+S2<-q_allr_K4$S
+N2<-sqrt(q_allr_K4$sample_size*0.02)
+lab2=q_allr_K4$popID
+for(i in 1:85) {
+add.pie(z=c(Q2[i],P2[i],R2[i],S2[i]), x=long2[i], y=lats2[i], radius=N2[i], labels=lab2[i], cex=0.5,label.dist=2,clockwise=FALSE,col=c(alpha("darkgreen",0.5), alpha("orange", 0.5),alpha("yellow",0.5),alpha("red",0.5)))
+}
+```
+
+
+This will loop through every row and plot a chart accordingly. The graphical parameters in this code apply to the label call only. The alpha part applies to the transparency. Clockwise depicts how the pies are drawn.
+For Na and Eu pops together, K=5
+
+For Europe only (K=4)
+
+```{r}
+long2<-q_eu_K4$Long
+lats2<-q_eu_K4$Lat
+Q2<-q_eu_K4$Q
+P2<-q_eu_K4$P
+R2<-q_eu_K4$R
+S2<-q_eu_K4$S
+N2<-sqrt(q_eu_K4$Sample_size*0.02)
+lab2<-q_eu_K4$PopID
+for(i in 1:36) {
+add.pie(z=c(Q2[i],P2[i],R2[i],S2[i]), x=long2[i], y=lats2[i], radius=N2[i], 
+        labels=lab2[i],cex=0.5,label.dist=2,clockwise=FALSE,col=c(alpha("darkgreen",0.5), alpha("orange", 0.5),alpha("yellow",0.5),alpha("red",0.5)))
+}
+```

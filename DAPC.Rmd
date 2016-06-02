@@ -1,0 +1,67 @@
+Multivariate analyses
+========================================================
+
+
+
+
+```{r, include=FALSE}
+library(adegenet)
+
+allr<-read.structure("allcra473_240_in.stru", n.ind=473, n.loc=1000, onerowperind=FALSE, col.lab=1, col.pop=2, row.marknames=1,NA.char="-9", pop=85, ask=FALSE, quiet=FALSE)
+all<-read.structure("all480_240_in.stru", n.ind=480, n.loc=1000, onerowperind=FALSE, col.lab=1, col.pop=2, row.marknames=1,NA.char="-9", pop=87, ask=FALSE, quiet=FALSE)
+EU<-read.structure("eu199_240_in.stru", n.ind=199, n.loc=1000, onerowperind=FALSE, col.lab=1, col.pop=2, row.marknames=1, NA.char="-9", pop=36, ask=FALSE, quiet=FALSE)
+nar<-read.structure("nacra232_240_in.stru", n.ind=232, n.loc=1000, onerowperind=FALSE, col.lab=1, col.pop=2, row.marknames=1,NA.char="-9", pop=42, ask=FALSE, quiet=FALSE)
+au<-read.structure("au42_240_in.stru", n.ind=42, n.loc=1000, onerowperind=FALSE, col.lab=1, col.pop=2, row.marknames=1,NA.char="-9", pop=7,  ask=FALSE, quiet=FALSE)
+```
+
+
+----
+
+DAPC
+
+---
+
+The Discriminant Principle Component Analysis is a multivariate approach to investigate genetic diversity by assigning individuals to clusters. The PCA approach  identify genetic clusters by describing the global diversity, and might not specify differences between groups. In contrast, DAPC seeks the discriminant functions, thus showing group differences while minimizing within-cluster variation
+
+Subset of new data 
+
+Identifying clusters, transforming data using PCA and retaining PCs
+This graph displays the cumulative variance explained by the PC eigenvalues. Retaining all the PCs is the best approach here.
+```{r}
+grp <- find.clusters(all, max.n.clust=10)
+```
+
+*All*
+
+To access the groups defined by this procedure
+```{r}
+table(pop(all),grp$grp)
+table.value(table(pop(all), grp$grp), col.lab=paste("inf", 1:2),row.lab=paste("ori", 1:87))
+```
+
+So now implement DAPC, which transforms the data using a PCA, and performs a discriminant analysis on the retained PC. DAPC can't benefit from too many PCs. Note that results might be unstable if the number of retained PCs exceeds N/3. So it is a fine balance between the explained variance (ideally >80%) and max # of retained PCs. 
+Q: if the variance curve is very flat, does this mean there is no structure? What do the PCs mean in this case?
+```{r}
+dapc_all <- dapc(all, grp$grp)
+scatter(dapc_all)
+```
+
+EU populations
+```{r}                 
+grpEU <- find.clusters(EU, max.n.clust=20)
+dapceu <- dapc(EU, grpEU$grp)
+scatter(dapceu)
+
+grpEU <- find.clusters(EUr, max.n.clust=20)
+dapceur <- dapc(EUr, grpEUr$grp)
+scatter(dapceur)
+```
+
+NA populations
+```{r}
+
+                       
+grpNA <- find.clusters(na, max.n.clust=40)
+```
+
+

@@ -1,0 +1,85 @@
+AMOVA
+===
+
+
+Load in data and read STRUCTURE infiles
+```{r, include=FALSE}
+library(adegenet) #read.structure & basic stats
+library(hierfstat) #pairwise Fst
+library(ggplot2) #plotting
+library(poppr)
+```
+
+```{r}
+allr<-read.structure("allcra473_240_in.stru", n.ind=473, n.loc=1000, onerowperind=FALSE, col.lab=1, col.pop=2, row.marknames=1,NA.char="-9", pop=85, ask=FALSE, quiet=FALSE)
+all<-read.structure("all480_240_in.stru", n.ind=480, n.loc=1000, onerowperind=FALSE, col.lab=1, col.pop=2, row.marknames=1,NA.char="-9", pop=87, ask=FALSE, quiet=FALSE)
+eu<-read.structure("eu199_240_in.stru", n.ind=199, n.loc=1000, onerowperind=FALSE, col.lab=1, col.pop=2, row.marknames=1, NA.char="-9", pop=36, ask=FALSE, quiet=FALSE)
+nar<-read.structure("nacra232_240_in.stru", n.ind=232, n.loc=1000, onerowperind=FALSE, col.lab=1, col.pop=2, row.marknames=1,NA.char="-9", pop=42, ask=FALSE, quiet=FALSE)
+au<-read.structure("au42_240_in.stru", n.ind=42, n.loc=1000, onerowperind=FALSE, col.lab=1, col.pop=2, row.marknames=1,NA.char="-9", pop=7,  ask=FALSE, quiet=FALSE)
+```
+
+Add data to genind object
+```{r}
+allother<-read.table("all476_other.txt",header=T)
+all@other <- as.data.frame(allother[,1:6])
+all@pop<-all@other[,1]
+strata(all)<-data.frame(all@other[,1:4])
+all@other$latlong<-data.frame(all@other[,5:6])
+
+allrother<-read.table("allr470_other.txt",header=T)
+allr@other <- as.data.frame(allrother[,1:6])
+allr@pop<-allr@other[,1]
+strata(allr)<-data.frame(allr@other[,1:4])
+allr@other$latlong<-data.frame(allr@other[,5:6])
+
+euother<-read.table("eu197_other.txt",header=T)
+eu@other <- as.data.frame(euother[,1:6])
+strata(eu)<-data.frame(eu@other[,1:4])
+eu@pop<-eu@other[,1]
+eu@other$latlong<-data.frame(eu@other[,5:6])
+
+narother<-read.table("nar232_other.txt",header=T)
+nar@other <- as.data.frame(narother[,1:6])
+strata(nar)<-data.frame(nar@other[,1:4])
+nar@pop<-nar@other[,1]
+nar@other$latlong<-data.frame(nar@other[,5:6])
+
+auother<-read.table("au41_other.txt",header=T)
+au@other <- as.data.frame(auother[,1:6])
+strata(au)<-data.frame(au$other[,1:4])
+au@pop<-au@other[,1]
+au@other$latlong<-data.frame(au@other[,5:6])
+```
+
+AMOVA shows at what level variation is explained. Here, I can look at variation within individuals; between individuals within populations, between populations within a range, and between ranges. 
+Next, I will do an AMOVA without calculating within-sample variance. This within-sample variance is caused by heterozygosities within diploid individuals, the analysis splits the diploid genotypes into haplotypes and uses this to calculate variance. I am wondering though if biases in the data might skew this variance extremely.
+
+Note that the "sample" in the output is actually the lowest level defined in the formula, in this case "pop".
+
+{poppr,ade4,pegas}
+http://grunwaldlab.github.io/Population_Genetics_in_R/AMOVA.html
+```{r}
+allr_gc <- as.genclone(allr)
+allr_gc
+table(strata(allr_gc, ~range/pop)) 
+allr_amova<-poppr.amova(allr_gc, ~range/pop,missing="geno",within=FALSE,cutoff=.9)
+```
+
+Significance testing of this result
+```{r}
+set.seed(1999)
+allr_amova_s   <- randtest(allr_amova, nrepet = 999)
+```
+
+
+
+Additionally, pegas is better at calculating the amova, but can only do this when within-sample variance is NOT calculated
+```{r}
+allr_amova_p<-poppr.amova(allr_gc, ~range/pop,method="pegas", within=FALSE, 
+                          missing="geno", cutoff=.9)
+allr_amova_sp   <- randtest(allr_amova_p, nrepet = 999) # doesn't work
+```
+
+
+
+

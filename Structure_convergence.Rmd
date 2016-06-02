@@ -1,0 +1,159 @@
+Convergence of Structure Plots
+========================================================
+
+Load data and only take the first 5 and before last column, and give new headers.
+
+```{r}
+k1<-data.frame((chain_k1[,1:5]),(chain_k1[,(ncol(chain_k1)-1)]))
+colnames(k1) <- c("Rep","Lambda","Alpha","F1","F2","Ln_Like") 
+chain_k2 = read.table("chains_K2_1000sum.txt",header=F,na.strings='-')
+k2<-data.frame((chain_k2[,1:5]),(chain_k2[,(ncol(chain_k2)-1)]))
+colnames(k2) <- c("Rep","Lambda","Alpha","F1","F2","Ln_Like") 
+chain_k3 = read.table("chains_K3_1000sum.txt",header=F,na.strings='-')
+k3<-data.frame((chain_k3[,1:5]),(chain_k3[,(ncol(chain_k3)-1)]))
+colnames(k3) <- c("Rep","Lambda","Alpha","F1","F2","Ln_Like") 
+chain_k4 = read.table("chains_K4_1000sum.txt",header=F,na.strings='-')
+k4<-data.frame((chain_k4[,1:5]),(chain_k4[,(ncol(chain_k4)-1)]))
+colnames(k4) <- c("Rep","Lambda","Alpha","F1","F2","Ln_Like") 
+chain_k5 = read.table("chains_K5_1000sum.txt",header=F,na.strings='-')
+k5<-data.frame((chain_k5[,1:5]),(chain_k5[,(ncol(chain_k5)-1)]))
+colnames(k5) <- c("Rep","Lambda","Alpha","F1","F2","Ln_Like") 
+chain_k6 = read.table("chains_K6_1000sum.txt",header=F,na.strings='-')
+k6<-data.frame((chain_k6[,1:5]),(chain_k6[,(ncol(chain_k6)-1)]))
+colnames(k6) <- c("Rep","Lambda","Alpha","F1","F2","Ln_Like")
+chain_k7 = read.table("chains_K7_1000sum.txt",header=F,na.strings='-')
+k7<-data.frame((chain_k7[,1:5]),(chain_k7[,(ncol(chain_k7)-1)]))
+colnames(k7) <- c("Rep","Lambda","Alpha","F1","F2","Ln_Like") 
+chain_k8 = read.table("chains_K8_1000sum.txt",header=F,na.strings='-')
+k8<-data.frame((chain_k8[,1:5]),(chain_k8[,(ncol(chain_k8)-1)]))
+colnames(k8) <- c("Rep","Lambda","Alpha","F1","F2","Ln_Like") 
+chain_k9 = read.table("chains_K9_1000sum.txt",header=F,na.strings='-')
+k9<-data.frame((chain_k9[,1:5]),(chain_k9[,(ncol(chain_k9)-1)]))
+colnames(k9) <- c("Rep","Lambda","Alpha","F1","F2","Ln_Like") 
+chain_k10 = read.table("chains_K10_1000sum.txt",header=F,na.strings='-')
+k10<-data.frame((chain_k10[,1:5]),(chain_k10[,(ncol(chain_k10)-1)]))
+colnames(k10) <- c("Rep","Lambda","Alpha","F1","F2","Ln_Like") 
+```
+
+plot alpha chains across Reps
+
+```{r}
+g1a<-ggplot(k1,aes(x=Rep,y=Alpha))+geom_line()+ggtitle("K2") 
+```
+
+plot LnLike chain
+```{r}
+g1b<-ggplot(k1,aes(x=Rep,y=Ln_Like,col=Rep))+geom_line()
+```
+
+K2
+```{r}
+g2a<-ggplot(k2,aes(x=Rep,y=Alpha))+geom_line()+ggtitle("K2") 
+g2b<-ggplot(k2,aes(x=Rep,y=Ln_Like))+geom_line()
+```
+
+check correlation between F
+```{r}
+g2c<-ggplot(k2,aes(x=F1,y=F2))+geom_point()+coord_fixed(0.5)
+```
+
+K3
+```{r}
+g3a<-ggplot(k3,aes(x=Rep,y=Alpha))+geom_line()+ggtitle("K3") 
+g3b<-ggplot(k3,aes(x=Rep,y=Ln_Like))+geom_line()
+g3c<-ggplot(k3,aes(x=F1,y=F2))+geom_point()+coord_fixed(0.5)
+```
+
+K4
+```{r}
+g4a<-ggplot(k4,aes(x=Rep,y=Alpha))+geom_line()+ggtitle("K4") 
+g4b<-ggplot(k4,aes(x=Rep,y=Ln_Like))+geom_line()
+g4c<-ggplot(k4,aes(x=F1,y=F2))+geom_point()+coord_fixed(0.5)
+```
+
+K5
+```{r}
+g5a<-ggplot(k5,aes(x=Rep,y=Alpha))+geom_line()+ggtitle("K5") 
+g5b<-ggplot(k5,aes(x=Rep,y=Ln_Like))+geom_line()
+g5c<-ggplot(k5,aes(x=F1,y=F2))+geom_point()+coord_fixed(0.5)
+```
+
+K6
+```{r}
+g6a<-ggplot(k6,aes(x=Rep,y=Alpha))+geom_line()+ggtitle("K6") 
+g6b<-ggplot(k6,aes(x=Rep,y=Ln_Like))+geom_line()
+g6c<-ggplot(k6,aes(x=F1,y=F2))+geom_point()+coord_fixed(0.5)
+```
+
+K7
+```{r}
+g7a<-ggplot(k7,aes(x=Rep,y=Alpha))+geom_line()+ggtitle("K7") 
+g7b<-ggplot(k7,aes(x=Rep,y=Ln_Like))+geom_line()
+g7c<-ggplot(k7,aes(x=F1,y=F2))+geom_point()+coord_fixed(0.5)
+```
+
+K8
+```{r}
+g8a<-ggplot(k8,aes(x=Rep,y=Alpha))+geom_line()+ggtitle("K8") 
+g8b<-ggplot(k8,aes(x=Rep,y=Ln_Like))+geom_line()
+g8c<-ggplot(k8,aes(x=F1,y=F2))+geom_point()+coord_fixed(0.5)
+```
+
+K9
+```{r}
+g9a<-ggplot(k9,aes(x=Rep,y=Alpha))+geom_line()+ggtitle("K9") 
+g9b<-ggplot(k9,aes(x=Rep,y=Ln_Like))+geom_line()
+g9c<-ggplot(k9,aes(x=F1,y=F2))+geom_point()+coord_fixed(0.5)
+```
+
+K10
+```{r}
+g10a<-ggplot(k10,aes(x=Rep,y=Alpha))+geom_line()+ggtitle("K10") 
+g10b<-ggplot(k10,aes(x=Rep,y=Ln_Like))+geom_line()
+g10c<-ggplot(k10,aes(x=F1,y=F2))+geom_point()+coord_fixed(0.5)
+```
+---
+
+Set definitions and plot
+```{r}
+# Multiple plot function
+# ggplot objects can be passed in ..., or to plotlist (as a list of ggplot objects)
+# - cols:   Number of columns in layout
+# - layout: A matrix specifying the layout. If present, 'cols' is ignored.
+# If the layout is something like matrix(c(1,2,3,3), nrow=2, byrow=TRUE),
+# then plot 1 will go in the upper left, 2 will go in the upper right, and
+# 3 will go all the way across the bottom.
+#
+multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
+  require(grid)
+  # Make a list from the ... arguments and plotlist
+  plots <- c(list(...), plotlist)
+  numPlots = length(plots)
+  # If layout is NULL, then use 'cols' to determine layout
+  if (is.null(layout)) {
+    # Make the panel
+    # ncol: Number of columns of plots
+    # nrow: Number of rows needed, calculated from # of cols
+    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                    ncol = cols, nrow = ceiling(numPlots/cols))
+  }
+ if (numPlots==1) {
+    print(plots[[1]])
+  } else {
+    # Set up the page
+    grid.newpage()
+    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
+    # Make each plot, in the correct location
+    for (i in 1:numPlots) {
+      # Get the i,j matrix positions of the regions that contain this subplot
+      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
+      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
+                                      layout.pos.col = matchidx$col))
+    }
+  }
+}
+pdf("k2-10_na_nolocprior.pdf", width=10, height=10)
+print(multiplot(g2a,g3a,g4a,g5a,g6a,g7a,g8a,g9a,g10a,g2b,g3b,g4b,g5b,g6b,g7b,g8b,g9b,g10b,g2c,g3c,g4c,g5c,g6c,g7c,g8c,g9c,g10c,cols=3))
+dev.off()
+
+```

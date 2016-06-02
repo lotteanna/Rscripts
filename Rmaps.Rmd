@@ -1,0 +1,71 @@
+---
+title: "Rmaps"
+---
+
+From Kim Gilbert, at:
+http://www.molecularecologist.com/2012/09/making-maps-with-r/
+
+Q population values are derived from Structure, StructureHarvester and Clumpp results (K*.popq files)
+```{r}
+library(maps)
+library(mapdata)
+library(maptools)  #for shapefiles
+library(mapplots)
+library(scales)
+```
+
+
+
+Read in sample points
+```{r}
+q_all_K2<-read.csv("popq_all_K2.csv")
+q_all_K4<-read.csv("popq_all_K4.csv")
+q_eu_K4<-read.csv("popq_eu_K4.csv")
+q_au_K4<-read.csv("popq_au_K4.csv")
+```
+
+Setting up graphics device
+```
+quartz()
+```
+Load map (this can better be drawn for every specific part I want to plot)
+```{r}
+map(database="worldHires",  xlim=c(-110,-60), ylim=c(35,55)) #North America
+map(database="worldHires",  xlim=c(-2,30), ylim=c(40,50)) #Europe
+```
+
+Here, xlim is longitude, ylim is latitude
+
+For Na and Eu pops together, K=2 (for Europe I use factor 0.02 for N size, 0.07 for Na. )
+```{r}
+points(q_all_K2$Long,q_all_K2$Lat)
+long<-q_all_K2$Long
+lats<-q_all_K2$Lat
+Q<-q_all_K2$Q
+P<-q_all_K2$P
+N<-sqrt(q_all_K2$Sample_size*0.02)
+lab=q_all_K2$PopID
+for(i in 1:87) {
+add.pie(z=c(Q[i], P[i]), x=long[i], y=lats[i], radius=N[i], labels=lab[i], cex=0.7,label.dist=2,clockwise=FALSE,col=c(alpha("orange", 0.5), alpha("blue", 0.5)))
+}
+```
+
+For Na and Eu pops together, K=5
+```{r}
+points(q_all_K5$Long,q_all_K5$Lat)
+long2<-q_all_K5$Long
+lats2<-q_all_K5$Lat
+Q2<-q_all_K5$Q
+P2<-q_all_K5$P
+R2<-q_all_K5$R
+S2<-q_all_K5$S
+T2<-q_all_K5$T
+N2<-sqrt(q_all_K5$Sample_size*0.02)
+lab2=q_all_K5$PopID
+for(i in 1:57) {
+add.pie(z=c(Q2[i],P2[i],R2[i],S2[i],T2[i]), x=long2[i], y=lats2[i], radius=N2[i], labels=lab2[i], cex=0.5,label.dist=2,clockwise=FALSE,col=c(alpha("darkgreen",0.5), alpha("orange", 0.5),alpha("yellow",0.5),alpha("red"),0.5,alpha("blue",0.5)))
+}
+```
+
+This will loop through every row and plot a chart accordingly. The graphical parameters in this code apply to the label call only. The alpha part applies to the transparency. Clockwise depicts how the pies are drawn.
+

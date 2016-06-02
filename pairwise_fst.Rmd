@@ -1,0 +1,60 @@
+Pairwise pop Fstats
+===
+
+Load in data and read STRUCTURE infiles
+```{r, include=FALSE}
+library(adegenet) #read.structure & basic stats
+library(hierfstat) #pairwise Fst
+library(ggplot2) #plotting
+library(pegas)
+library(car)
+library(diveRsity)
+library(devtools)
+library(plyr) #revalue function (used to rename levels)
+library(reshape2)
+library(poppr)
+
+allr<-read.structure("allcra473_240_in.stru", n.ind=473, n.loc=1000, onerowperind=FALSE, col.lab=1, col.pop=2, row.marknames=1,NA.char="-9", pop=85, ask=FALSE, quiet=FALSE)
+
+allrother<-read.table("allr470_other.txt",header=T)
+allr@other <- as.data.frame(allrother[,1:6])
+allr@pop<-allr@other[,1]
+strata(allr)<-data.frame(allr@other[,3:4])
+allr@other$latlong<-data.frame(allr@other[,5:6])
+```
+
+```{r}
+allr_pfst<-pairwise.fst(allr, res.type=c("dist","matrix"))
+write.table(as.matrix(allr_pfst),"allr_pfst",sep="\t")
+```
+
+
+Now I wanna know if these pairwise Fsts are significant. So I can permutate across each fst value
+From http://lists.r-forge.r-project.org/pipermail/adegenet-forum/2011-February/000214.html
+
+```{r}
+mat.obs <- pairwise.fst(allr, res.type="matrix") 
+NBPERM <- 10 # this is the number of permutations used for the p-values; for a publication at least 999 would be required.
+mat.perm <- lapply(1:NBPERM, function(i) pairwise.fst(allr, pop=sample(pop(allr)), res.type="matrix"))
+```
+
+mat.obs contains original Fst values, mat.perm is a list with NPERM matrices of permuted Fst values. To get e.g. right-tail p-values, we can just count the proportion of mat.obs >= mat.perm; e.g. for the first pair of populations:
+
+```{r}
+mean(c(mat.obs[1,2] < na.omit(sapply(1:NBPERM, function(i) mat.perm[[i]][1,2])), TRUE))
+```
+
+In the above command, "na.omit(sapply(1:NBPERM, function(i) mat.perm[[i]][1,2]))" is a vector of permuted values for this pair of populations across all replicates; c(..., TRUE) is added because the observed value is always added to the permuted values (it is one of the possible permutations of groups).
+
+In practice, it is easier to convert the results as objects of the class randtest (class for Monte Carlo test in ade4, and do for all pairs of populations
+
+```{r}
+library(ade4)
+
+allTests <- list()
+ for(i in 1:(nrow(mat.obs)-1)){
+   for(j in 2:nrow(mat.obs)){
+   allTests[[paste(rownames(mat.obs)[i],rownames(mat.obs)[j],sep="-")]] <- as.randtest(na.omit(sapply(1:NBPERM, function(k) mat.perm[[k]][i,j])), mat.obs[i,j], alter="greater")
+   }
+}
+```

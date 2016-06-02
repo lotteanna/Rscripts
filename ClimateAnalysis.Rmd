@@ -1,0 +1,326 @@
+Climate analysis - Not finished!
+===
+
+Lotte van Boheemen
+Last edit: 24-2-16
+
+This script is plotting climatic data for each sampling location. Climate data is downloaded from worldclim and point samples are taken with QIS
+
+**Getting the Worldclim variables into 1 merged shapefile for the selected coutries**
+1. Download climate variables for each tile from http://www.worldclim.org/tiles.php
+2. Download country boundaries from http://www.naturalearthdata.com/downloads/10m-cultural-vectors/10m-admin-0-countries/
+3. Unzip this data in desired folder
+4. Open QGIS and click "Layer > Add raster layer". Select all the important tiles from Worldclim
+5. Click "Raster > Miscellaneous > Merge". In dialog box, select all .tif files as infile, create a new output. Make sure the "Load into canvas when finished" box is checked. Click "OK"
+6. Click "Layer > Add Vector Layer", select the country shape file (.shp), click "OK"
+7. Click "Select Single Feature" in toolbar and click on all the countries you wish to include
+8. Right-click on the ne_10m_admin_0_countries layer (in "Layers" window), and select "Save Selection As..."
+9. Save as new shapefile and make sure the "Add saved file to map" box is ticked. Click "OK"
+10. Click "Raster > Extraction > Clipper". The input file is the merged Worldclim shapefile, output is a new file, "Mask Layer" is the selected countries as in point 8. Click "OK" Note: this is all very memory intensive. The actual shapefile(s) that are clipped do not have to be loaded into QGIS. *This actually made some of my files bigger for some reason, so might be a thing to think about leaving out*
+
+**Extracting point samples**
+https://pvanb.wordpress.com/2010/02/15/sampling-raster-values-at-point-locations-in-qgis/
+1. Click "Add Delimited Text Layer". Make sure that the text layer is in the right encoding (I use Unix (LF), Unicode (UTF-8))
+2. Check that all the data is loaded in correctly, click "OK"
+3. Select the correct Coordinate Reference System. For this, make sure that all point samples are in the same reference system. Click "OK"
+4. Install the required plugin. Click "Plugins > Manage and Install Plugins". Select "Point Sampling Tool" and click "Install"
+5. Click "Plugins > Analyses > Point sampling tool". Select the layer that contains the point samples in the first drop down menu. Select all the layers that you want to extract data from in the second drop-down menu. Click "OK"
+6. Click "Vector > Data Management Tools > Join attributes by location". In the first drop-down menu, select the original point sample file. In the second drop-down menu, select the layer created in point 5.
+7. Right-click on the joined layer, click "Save As..." and save as desired format. Tada!
+
+NB: I have 2 populations that were sampled right next to the coast, AU-01-11 and AU-01-17. When extracting the Bioclim variables, I do not get sensible values for these points. After discussing with Rebecca Valkan, this is most likely do to the resolution of the climate rasters, which are averaginig values. AP1 is not imported due to missing coordinates
+
+NOTE: SOME OF THE VARIABLES AND LOCATIONS DID NOT READ IN CORRECTLY. REMOVED THESE IN _REDUCED.CSV FILE. NEEDS CHECKING
+
+Read in data and transform to real values
+```{r}
+```{r,include=FALSE}
+library(ggplot2)
+library(reshape)
+library(vegan)
+library(grid)
+library(car)
+setwd("/Users/lottevanboheemen/Documents/Monash/PhD/R/Clim/")
+d<-read.csv('allpop_LBcoord_climvars.csv',header=T,strip.white=T)
+str(d)
+```
+
+---
+Now do PCA to reduce dimensionality
+
+Routinely look at the scatterplot matrix when using a PCA. Look at the correlations. If there are none, there is no use for the multivariate analysis.
+```{r}
+pairs(d[,5:26])
+pairs(d[,9:14]) # subset for presentation
+```
+
+Root-transform and center data. Look at Livezey_PCA_PSU
+```{r}
+dtrans<-d[,1:4]
+dtrans2<-d[,1:4]#without latlon
+d.add<-d[5:26]+300 #add 500 because there are negative values. This shouldn't matter as I will standardize after
+d.add2<-d[7:26]+300 
+d.log<-log(d.add)
+pairs(d.log[5:10])
+d.trans<-sqrt(d.add)
+d.trans2<-sqrt(d.add2)
+pairs(d.trans[5:10])
+```
+
+Check the distributions of these transformations
+```{r}
+hist(d$bio12)
+hist(d.log$bio12)
+hist(d.trans$bio12)
+```
+
+So I actually find that not transforming the data looks better *edit 25-2-16: for bio12 it does look better now...*. However, when comparing the standardized transformed with the standardized untransformed data, the data manipulations together seem to get the best result. Interesting to think about...
+```{r}
+dtrans[,5:26]<- decostand(d.trans,"standardize")
+dtrans2[,5:26]<- decostand(d.trans2,"standardize")
+pairs(dtrans[,9:14])
+hist(dtrans$bio12)
+```
+
+
+PCA
+```{r}
+all.pca <- rda(dtrans[,5:26], scale=T)
+summary(all.pca,data=NULL)
+screeplot(all.pca)
+```
+
+Based on the 3 rules, we can keep the first 4-5 PCs
+
+Now an ordination plot to see how sites relate to each other
+```{r}
+biplot(all.pca,scaling=2)
+```
+
+```{r}
+d2<-d
+d2$sites <- as.data.frame(scores(all.pca,choice=1:5,scaling=2)$sites)
+```
+
+Now show how the 3 continents fit in the three dimensions of the main 4 PCAs. B Cannot figure out how to label the different hulls, but the outlier is Australia, the large hull North-America, and the smaller one inside Europe.
+```{r}
+#make vectors with colours and symbols to keep ordering in legend correct for each continent
+d2$Cont2<-recode(d2$Cont,'"EU"="Europe";"AM"="North America";"AU"="Australia"')
+colvec <- c("red2", "green4", "mediumblue")
+pchvec <- c(15,16,17)
+ordiplot(all.pca, display="sites",type="n")
+with(d2, points(all.pca, display = "sites", col = colvec[Cont2], bg = colvec[Cont2],pch=pchvec[Cont2]))
+ordihull(all.pca, d2$Cont2)
+with(d2, legend("bottomleft", legend = levels(Cont2), bty = "n",col = colvec, pch =pchvec, pt.bg = colvec))
+#dd.scatter.eig(all.pca$CA$eig[1:20],3,1,2, ratio=.3)
+```
+
+Subset the data  for every continent
+```{r}
+dAM<-subset(d, Cont=="AM")
+dEU<-subset(d, Cont=="EU")
+dAU<-subset(d, Cont=="AU")
+```
+
+
+Now extract the object scores. Get the scores and make a new column with the variable and object names, which makes it easier to plot
+```{r}
+newdata.sites <- as.data.frame(scores(all.pca,choice=1:5,scaling=2)$sites)
+newdata.sites$Sites <- rownames(newdata.sites)
+newdata.sites$Pop <- d$Pop
+newdata.sites$Cont<-recode(d$Cont,'"EU"="Europe";"AM"="North America";"AU"="Australia"')
+head(newdata.sites)
+
+newdata.species <- as.data.frame(scores(all.pca,choice=1:5,scaling=2)$species)
+newdata.species$Species <- rownames(newdata.species)
+head(newdata.species)
+
+gall<-ggplot(newdata.sites,aes(y=PC2,x=PC1)) +
+  #geom_text(aes(label=Pop)) + 
+  geom_point(data=newdata.sites,color = colvec[newdata.sites$Cont], pch=pchvec[newdata.sites$Cont],show_guide=TRUE)+
+  geom_text(data=newdata.species,aes(label=Species),color='black',size=6) +
+  geom_segment(data=newdata.species,aes(yend=0,xend=0),color='black',
+               arrow=arrow(ends='first',length = unit(0.3,"cm")),size=0.5,linetype=2) +
+  theme_classic() + theme(panel.background=element_rect(color='black'),legend.position=c(0,1))
+```
+
+Check PCA for North-America
+```{r}
+AM.pca <- rda(dAM[,5:25], scale=T)
+summary(AM.pca,data=NULL)
+screeplot(AM.pca)
+biplot(AM.pca,scaling=2)
+
+dAM$sites <- as.data.frame(scores(AM.pca,choice=1:2,scaling=2)$sites)
+newdata.sites$Sites <- rownames(newdata.sites)
+head(newdata.sites)
+
+newdataAM.species <- as.data.frame(scores(AM.pca,choice=1:2,scaling=2)$species)
+newdataAM.species$Species <- rownames(newdataAM.species)
+head(newdataAM.species)
+
+gAM<-ggplot(dAM$sites,aes(y=PC2,x=PC1)) +
+  geom_text(aes(label=dAM$id),size=3) + 
+  geom_text(data=newdataAM.species,aes(label=Species),color='red',size=3) +
+  geom_segment(data=newdataAM.species,aes(yend=0,xend=0),color='red',
+               arrow=arrow(ends='first',length = unit(0.3,"cm"))) +
+  theme_classic() + theme(panel.background=element_rect(color='black'))
+```
+
+Check PCA for EU
+```{r}
+EU.pca <- rda(dEU[,5:25], scale=T)
+summary(EU.pca,data=NULL)
+screeplot(EU.pca)
+biplot(EU.pca,scaling=2)
+
+dEU$sites <- as.data.frame(scores(EU.pca,choice=1:2,scaling=2)$sites)
+newdataEU.species <- as.data.frame(scores(EU.pca,choice=1:2,scaling=2)$species)
+newdataEU.species$Species <- rownames(newdataEU.species)
+head(newdataEU.species)
+
+gEU<-ggplot(dEU$sites,aes(y=PC2,x=PC1)) +
+  geom_text(aes(label=dEU$id),color=as.numeric(dEU$Seq+1),size=3) + 
+  geom_text(data=newdataEU.species,aes(label=Species),color='red',size=3) +
+  geom_segment(data=newdataEU.species,aes(yend=0,xend=0),color='red',
+               arrow=arrow(ends='first',length = unit(0.3,"cm"))) +
+  theme_classic() + theme(panel.background=element_rect(color='black'))
+```
+
+Check PCA for AU
+```{r}
+AU.pca <- rda(dAU[,5:25], scale=T)
+summary(AU.pca,data=NULL)
+screeplot(AU.pca)
+biplot(AU.pca,scaling=2)
+
+dAU$sites <- as.data.frame(scores(AU.pca,choice=1:2,scaling=2)$sites)
+newdataAU.species <- as.data.frame(scores(AU.pca,choice=1:2,scaling=2)$species)
+newdataAU.species$Species <- rownames(newdataAU.species)
+head(newdataAU.species)
+
+gAU<- ggplot(dAU$sites,aes(y=PC2,x=PC1)) +
+  #geom_text(aes(label=dAU$id),color=as.numeric(dAU$Seq+1),size=3) + 
+  geom_text(data=newdataAU.species,aes(label=Species),color='red',size=3) +
+  geom_segment(data=newdataAU.species,aes(yend=0,xend=0),color='red',
+               arrow=arrow(ends='first',length = unit(0.3,"cm"))) +
+  theme_classic() + theme(panel.background=element_rect(color='black'))
+
+```
+
+Compare
+```{r}
+gall
+gAM
+gEU
+gAU
+```
+
+
+Redo entire analysis without lat/long
+
+```{r}
+all2.pca <- rda(dtrans2[,5:23], scale=T)
+summary(all2.pca,data=NULL)
+screeplot(all2.pca)
+```
+
+Based on the 3 rules, we can keep the first 4-5 PCs
+
+Now an ordination plot to see how sites relate to each other
+```{r}
+biplot(all2.pca,scaling=2)
+```
+
+Now extract the object scores. Get the scores and make a new column with the variable and object names, which makes it easier to plot
+```{r}
+newdata2.sites <- as.data.frame(scores(all2.pca,choice=1:5,scaling=2)$sites)
+newdata2.sites$Sites <- rownames(newdata2.sites)
+newdata2.sites$Pop <- d$Pop
+newdata2.sites$Cont<-recode(d$Cont,'"EU"="Europe";"AM"="North America";"AU"="Australia"')
+head(newdata2.sites)
+
+newdata2.species <- as.data.frame(scores(all2.pca,choice=1:5,scaling=2)$species)
+newdata2.species$Species <- rownames(newdata2.species)
+head(newdata2.species)
+
+g2all<-ggplot(newdata2.sites,aes(y=PC2,x=PC1)) +
+  #geom_text(aes(label=Pop)) + 
+  geom_point(data=newdata2.sites,color = colvec[newdata2.sites$Cont], pch=pchvec[newdata2.sites$Cont],show_guide=TRUE)+
+  geom_text(data=newdata2.species,aes(label=Species),color='black',size=6) +
+  geom_segment(data=newdata2.species,aes(yend=0,xend=0),color='black',
+               arrow=arrow(ends='first',length = unit(0.3,"cm")),size=0.5,linetype=2) +
+  theme_classic() + theme(panel.background=element_rect(color='black'),legend.position=c(0,1))
+```
+
+Check PCA for North-America
+```{r}
+AM.pca <- rda(dAM[,5:25], scale=T)
+summary(AM.pca,data=NULL)
+screeplot(AM.pca)
+biplot(AM.pca,scaling=2)
+
+dAM$sites <- as.data.frame(scores(AM.pca,choice=1:2,scaling=2)$sites)
+newdata.sites$Sites <- rownames(newdata.sites)
+head(newdata.sites)
+
+newdataAM.species <- as.data.frame(scores(AM.pca,choice=1:2,scaling=2)$species)
+newdataAM.species$Species <- rownames(newdataAM.species)
+head(newdataAM.species)
+
+gAM<-ggplot(dAM$sites,aes(y=PC2,x=PC1)) +
+  geom_text(aes(label=dAM$id),size=3) + 
+  geom_text(data=newdataAM.species,aes(label=Species),color='red',size=3) +
+  geom_segment(data=newdataAM.species,aes(yend=0,xend=0),color='red',
+               arrow=arrow(ends='first',length = unit(0.3,"cm"))) +
+  theme_classic() + theme(panel.background=element_rect(color='black'))
+```
+
+Check PCA for EU
+```{r}
+EU.pca <- rda(dEU[,5:25], scale=T)
+summary(EU.pca,data=NULL)
+screeplot(EU.pca)
+biplot(EU.pca,scaling=2)
+
+dEU$sites <- as.data.frame(scores(EU.pca,choice=1:2,scaling=2)$sites)
+newdataEU.species <- as.data.frame(scores(EU.pca,choice=1:2,scaling=2)$species)
+newdataEU.species$Species <- rownames(newdataEU.species)
+head(newdataEU.species)
+
+gEU<-ggplot(dEU$sites,aes(y=PC2,x=PC1)) +
+  geom_text(aes(label=dEU$id),color=as.numeric(dEU$Seq+1),size=3) + 
+  geom_text(data=newdataEU.species,aes(label=Species),color='red',size=3) +
+  geom_segment(data=newdataEU.species,aes(yend=0,xend=0),color='red',
+               arrow=arrow(ends='first',length = unit(0.3,"cm"))) +
+  theme_classic() + theme(panel.background=element_rect(color='black'))
+```
+
+Check PCA for AU
+```{r}
+AU.pca <- rda(dAU[,5:25], scale=T)
+summary(AU.pca,data=NULL)
+screeplot(AU.pca)
+biplot(AU.pca,scaling=2)
+
+dAU$sites <- as.data.frame(scores(AU.pca,choice=1:2,scaling=2)$sites)
+newdataAU.species <- as.data.frame(scores(AU.pca,choice=1:2,scaling=2)$species)
+newdataAU.species$Species <- rownames(newdataAU.species)
+head(newdataAU.species)
+
+gAU<- ggplot(dAU$sites,aes(y=PC2,x=PC1)) +
+  #geom_text(aes(label=dAU$id),color=as.numeric(dAU$Seq+1),size=3) + 
+  geom_text(data=newdataAU.species,aes(label=Species),color='red',size=3) +
+  geom_segment(data=newdataAU.species,aes(yend=0,xend=0),color='red',
+               arrow=arrow(ends='first',length = unit(0.3,"cm"))) +
+  theme_classic() + theme(panel.background=element_rect(color='black'))
+
+```
+
+Compare
+```{r}
+gall
+gAM
+gEU
+gAU
+```

@@ -1,0 +1,30 @@
+To convert files in other formats
+========================================================
+
+
+```{r}
+library(adegenet)
+library(poppr)
+all<-read.structure("all_240_in.stru", n.ind=480, n.loc=1000, onerowperind=FALSE, col.lab=1, col.pop=2, row.marknames=1,NA.char="-9", pop=89, ask=FALSE, quiet=FALSE)
+EU<-read.structure("infile_nr_eu.stru", n.ind=148, n.loc=8811, onerowperind=FALSE, col.lab=1, col.pop=2, row.marknames=1,
+                       NA.char="-9", pop=28, missing=NA, ask=FALSE, quiet=FALSE)
+na<-read.structure("infile_nr_na.stru", n.ind=133, n.loc=8811, onerowperind=FALSE, col.lab=1, col.pop=2, row.marknames=1,
+                       NA.char="-9", pop=29, missing=NA, ask=FALSE, quiet=FALSE)
+allr<-read.structure("infile_r_all.stru", n.ind=281, n.loc=948, onerowperind=FALSE, col.lab=1, col.pop=2, row.marknames=1,
+                       NA.char="-9", pop=57, missing=NA, ask=FALSE, quiet=FALSE)
+EUr<-read.structure("infile_r_eu.stru", n.ind=148, n.loc=948, onerowperind=FALSE, col.lab=1, col.pop=2, row.marknames=1,
+                       NA.char="-9", pop=28, missing=NA, ask=FALSE, quiet=FALSE)
+nar<-read.structure("infile_r_na.stru", n.ind=133, n.loc=948, onerowperind=FALSE, col.lab=1, col.pop=2, row.marknames=1,
+                       NA.char="-9", pop=29, missing=NA, ask=FALSE, quiet=FALSE)
+```
+
+To genalex
+So GenAlex can't handle this many loci, as it is limited by the columns. All I really wanna know is if I can find some support for the Structure files. Therefore, I will run genalex on the random infile I also used to run Structure. 
+```{r}
+genind2genalex(all, filename = "all_genalex.csv", quiet = FALSE, geo = FALSE, geodf = "xy", sep = ",")
+genind2genalex(EU, filename = "EU_genalex.csv", quiet = FALSE, geo = FALSE, geodf = "xy", sep = ",")
+genind2genalex(na, filename = "NA_genalex.csv", quiet = FALSE, geo = FALSE, geodf = "xy", sep = ",")
+genind2genalex(allr, filename = "all_r_genalex.csv", quiet = FALSE, geo = FALSE, geodf = "xy", sep = ",")
+genind2genalex(EUr, filename = "EU_r_genalex.csv", quiet = FALSE, geo = FALSE, geodf = "xy", sep = ",")
+genind2genalex(nar, filename = "NA_r_genalex.csv", quiet = FALSE, geo = FALSE, geodf = "xy", sep = ",")
+```

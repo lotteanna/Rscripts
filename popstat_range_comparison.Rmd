@@ -1,0 +1,38 @@
+Load in data and read STRUCTURE infiles
+```{r, include=FALSE}
+library(adegenet)
+library(hierfstat) #pairwise Fst
+library(PMCMR)
+
+popstat_all<-read.table("~/Documents/Monash/PhD/Analyses/Data/popstat_hierfstat.txt", header=TRUE)
+```
+
+
+```{r}
+shapiro.test(popstat_all$Fis)
+shapiro.test(popstat_all$AR)
+```
+
+Fis is non-normal, cannot use anova for this. Will use Kruskal-Wallis (non-parametric test) for all statistics for consistency of methods
+
+Quickly check the effect of sample size on the model. Need to be applicable for non-linear data, but similar to ancova
+
+```{r}
+test<-glm(Fis~Range*N, data=popstat_all)
+summary(test)
+test2<-glm(AR~Range*N, data=popstat_all)
+summary(test2)
+```
+N has no effect on the relation between response and predictors.
+
+
+Testing:
+```{r}
+kruskal.test(popstat_all$Fis~popstat_all$Range)
+kruskal.test(popstat_all$AR~popstat_all$Range)
+```
+
+So allelic richness is different between Ranges, but where is the difference?
+```{r}
+posthoc.kruskal.nemenyi.test(popstat_all$AR~popstat_all$Range)
+```

@@ -1,0 +1,54 @@
+---
+title: "diveRsity"
+output: html_document
+---
+
+```{r, include=FALSE}
+library(ggplot2) #plotting
+library(diveRsity)
+library(devtools)
+
+#rarefaction = FALSE gives error:Error: file not found: 'allCount.cpp'
+#In addition: Warning message:
+#In normalizePath(file, winslash = "/") :
+#  path[1]="allCount.cpp": No such file or directory
+
+basicStats(infile = "allr473_1000_240.gen", outfile ="allr473_basicStats", fis_ci = TRUE, ar_ci = TRUE, fis_boots = 1000, ar_boots = 1000, mc_reps = 1000, rarefaction = TRUE, ar_alpha = 0.05,fis_alpha = 0.05)
+
+data(Test_data)
+Test_data[is.na(Test_data)] <- au_genpop
+test_result <- diffCalc(infile = Test_data, outfile = "myresults",
+                        fst = FALSE, pairwise = TRUE, bs_locus = FALSE,
+                        bs_pairwise = TRUE, boots = 100,
+                        para = TRUE)
+
+#woooow below is actually running!!!
+
+diffCalc(infile = "allr473_1000_240.gen", outfile = "allr473_Fst",
+                        fst = FALSE, pairwise = TRUE, bs_locus = FALSE,
+                        bs_pairwise = TRUE, boots = 999,para = FALSE)
+
+#calculating global differentiation indexes (Fst etc) with confidence intervals
+diffCalc(infile = "allr473_1000_240.gen", outfile = "all_test_Fst",fst = FALSE, pairwise = FALSE, bs_locus = TRUE,
+                        bs_pairwise = FALSE, boots = 1000,para = FALSE)
+diffCalc(infile = "eu199_1000_240.gen", outfile = "eu_test_Fst",fst = FALSE, pairwise = FALSE, bs_locus = TRUE,
+                        bs_pairwise = FALSE, boots = 1000,para = FALSE)
+diffCalc(infile = "au42_1000_240.gen", outfile = "au_test_Fst",fst = FALSE, pairwise = FALSE, bs_locus = TRUE,
+                        bs_pairwise = FALSE, boots = 1000,para = FALSE)
+diffCalc(infile = "nacra232_1000_240.gen", outfile = "nacra_test_Fst",fst = FALSE, pairwise = FALSE, bs_locus = TRUE,
+                        bs_pairwise = FALSE, boots = 1000,para = FALSE)
+
+write.table(poop,"poop.txt")
+
+test_result <- diffCalc(infile = "au42_1000_240.gen" , outfile = "myresults",
+                        fst = TRUE, pairwise = TRUE, bs_locus = FALSE,
+                        bs_pairwise = TRUE, boots = 100, para = FALSE)
+
+test2<-fas
+
+fastDivPart(infile = "au42_1000_240.gen" , outfile = "myresults2", gp = 3, pairwise = TRUE,fst = TRUE, bs_locus = FALSE, bs_pairwise = FALSE, boots = 10, plot = FALSE, para = FALSE)
+
+
+```
+
+

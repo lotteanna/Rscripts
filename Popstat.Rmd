@@ -1,0 +1,271 @@
+Population descriptions
+========================================================
+
+Script by Lotte van Boheemen
+
+Last edit 
+
+```{r}
+# Thu Mar 24 13:28:23 2016 ------------------------------
+```
+
+Edit 24-3-16
+
+- include PopGenReport
+
+Script to calculate population statistics in R (Fst etc)
+
+Load in data and read STRUCTURE infiles
+```{r, include=FALSE}
+library(adegenet) #read.structure & basic stats
+library(hierfstat) #pairwise Fst
+library(ggplot2) #plotting
+library(pegas)
+library(car)
+library(diveRsity)
+library(devtools)
+library(plyr) #revalue function (used to rename levels)
+library(reshape2)
+library(poppr)
+library(mmod)
+
+allr<-read.structure("allcra473_240_in.stru", n.ind=473, n.loc=1000, onerowperind=FALSE, col.lab=1, col.pop=2, row.marknames=1,NA.char="-9", pop=85, ask=FALSE, quiet=FALSE)
+all<-read.structure("all480_240_in.stru", n.ind=480, n.loc=1000, onerowperind=FALSE, col.lab=1, col.pop=2, row.marknames=1,NA.char="-9", pop=87, ask=FALSE, quiet=FALSE)
+eu<-read.structure("eu199_240_in.stru", n.ind=199, n.loc=1000, onerowperind=FALSE, col.lab=1, col.pop=2, row.marknames=1, NA.char="-9", pop=36, ask=FALSE, quiet=FALSE)
+nar<-read.structure("nacra232_240_in.stru", n.ind=232, n.loc=1000, onerowperind=FALSE, col.lab=1, col.pop=2, row.marknames=1,NA.char="-9", pop=42, ask=FALSE, quiet=FALSE)
+au<-read.structure("au42_240_in.stru", n.ind=42, n.loc=1000, onerowperind=FALSE, col.lab=1, col.pop=2, row.marknames=1,NA.char="-9", pop=7,  ask=FALSE, quiet=FALSE)
+```
+
+```{r}
+allother<-read.table("all476_other.txt",header=T)
+all@other <- as.data.frame(allother[,1:6])
+all@pop<-all@other[,1]
+strata(all)<-cbind(data.frame(all@other[,1]),data.frame(all@other[,3:4]))
+nameStrata(all)<-~Pop/Range/Country
+all@other$latlong<-data.frame(all@other[,5:6])
+
+allrother<-read.table("allr470_other.txt",header=T)
+allr@other <- as.data.frame(allrother[,1:6])
+allr@pop<-allr@other[,1]
+strata(allr)<-data.frame(allr@other[,3:4])
+allr@other$latlong<-data.frame(allr@other[,5:6])
+
+euother<-read.table("eu197_other.txt",header=T)
+eu@other <- as.data.frame(euother[,1:6])
+strata(eu)<-data.frame(eu@other[,3:4])
+eu@pop<-eu@other[,1]
+eu@other$latlong<-data.frame(eu@other[,5:6])
+
+narother<-read.table("nar232_other.txt",header=T)
+nar@other <- as.data.frame(narother[,1:6])
+strata(nar)<-data.frame(nar@other[,3:4])
+nar@pop<-nar@other[,1]
+nar@other$latlong<-data.frame(nar@other[,5:6])
+
+auother<-read.table("au41_other.txt",header=T)
+au@other <- as.data.frame(auother[,1:6])
+strata(au)<-data.frame(au$other[,3:4])
+au@pop<-au@other[,1]
+au@other$latlong<-data.frame(au@other[,5:6])
+```
+
+---
+All populations together
+
+````{r}
+#au<-read.genetix("au42_1000.gtx")
+baseallr<-basic.stats(allr)
+
+```
+
+
+
+```{r}
+#Gst_Nei(au)
+
+#genind2genpop(au)
+
+#obs.D <- D_Jost(au)
+#data("nancycats")
+
+#bs <- chao_bootstrap(nancycats,nreps=10)
+#bs.D <- summarise_bootstrap(bs,D_Jost)
+
+#bs <- chao_bootstrap(au,nreps=10) #works
+#bs.D <- summarise_bootstrap(bs,D_Jost) #doesn't work
+#summarise_bootstrap(chao_bootstrap(au,nreps=10),D_Jost)
+
+Ho_allr<-as.data.frame(baseallr$Ho)
+write.table(Ho_allr,file="HoAllr.txt")
+Hs_allr<-baseallr$Hs
+write.table(Hs_allr,file="HsAllr.txt")
+Fis_allr<-baseallr$Fis 
+write.table(Fis_allr,file="FisAllr.txt")
+n.ind.samp_allr<-baseallr$n.ind.samp
+write.table(n.ind.samp_allr,file="nindsamp_allr.txt")
+#I used this table to remove loci with less then 4 genotypes
+#allelic richness
+rich_allr<-allelic.richness(allr,min.n=NULL,diploid=TRUE)
+write.table(rich_allr,file="rich_allr.txt")
+```
+
+====
+**Population level diversity statistics**
+
+Read in data
+```{r}
+popstat_all<-read.table("popstat_hierfstat.txt", header=TRUE)
+popstat_all$N<-as.numeric(popstat_all$N)
+heho<-read.table("heho_hierfstat.txt", header=TRUE)
+popstat_all$Range <- factor(popstat_all$Range,levels = rev(levels(popstat_all$Range)))
+popstat_all$Range<-revalue(popstat_all$Range, c("nat"="Native", "inv_eur"="Introduced, Europe","inv_aus"="Introduced, Australia"))
+heho$Range <- factor(heho$Range,levels=rev(levels(heho$Range)))
+heho$Range<-revalue(heho$Range, c("nat"="Native", "inv_eur"="Introduced, Europe","inv_aus"="Introduced, Australia"))
+heho$Level<- factor(heho$Level, levels=c("Hs", "Ho"))
+```
+
+```{r}
+pop_nat<-subset(popstat_all, Range=="nat")
+shape<-rep(seq(15,18),length.out=42)
+pdf("_Graph/LatFis_nat.pdf",height=9,width=9)
+ggplot(pop_nat, aes(x=Latitude, y=Fis)) + ylab("Fis")+  
+  theme_bw()+theme(legend.position="bottom",legend.direction="horizontal")+
+ geom_point(aes(color=factor(PopID)),shape=shape, size=4)+
+    geom_errorbar(aes(ymin=Fis-Fis_C, ymax=Fis+Fis_C), width=.2)+
+  scale_color_discrete(breaks=c("AA-2","AA-1","NB1","TR-QB","BN-ON","MN-ON","MN-2","AA-3","AA-20","AA-4","MI","AA-19","AA-5","AA-6","WI","MA","AA-17","AA-7","AA-8","AA-16","AA-15","AA-14","AA-9","AA-10","AA-11","AA-12","AA-13","MS","PA","OH","IND","KS","KY","MO","TN","NC","SC","AR","GA","MP","AL","FL"),name="Location code")
+dev.off()
+
+
+pdf("_Graph/LonFis_nat.pdf",height=9,width=9)
+ggplot(pop_nat, aes(x=Longitude, y=Fis)) + ylab("Fis")+  
+  theme_bw()+theme(legend.position="bottom",legend.direction="horizontal")+
+ geom_point(aes(color=factor(PopID)),shape=shape, size=4)+
+    geom_errorbar(aes(ymin=Fis-Fis_C, ymax=Fis+Fis_C), width=.2)+
+  scale_color_discrete(breaks=c("AA-2","AA-1","NB1","TR-QB","BN-ON","MN-ON","MN-2","AA-3","AA-20","AA-4","MI","AA-19","AA-5","AA-6","WI","MA","AA-17","AA-7","AA-8","AA-16","AA-15","AA-14","AA-9","AA-10","AA-11","AA-12","AA-13","MS","PA","OH","IND","KS","KY","MO","TN","NC","SC","AR","GA","MP","AL","FL"),name="Location code")
+dev.off()
+
+pdf("Graph/LatHo_nat.pdf",height=9,width=9)
+ggplot(pop_nat, aes(x=Latitude, y=Ho)) + ylab("Observed Heterozygosity")+  
+  theme_bw()+ theme(legend.position="bottom",legend.direction="horizontal")+
+  geom_point(aes(color=factor(PopID)),shape=shape, size=4)+
+    geom_errorbar(aes(ymin=Ho-Ho_C, ymax=Ho+Ho_C), width=.2)+
+  scale_color_discrete(breaks=c("AA-2","AA-1","NB1","TR-QB","BN-ON","MN-ON","MN-2","AA-3","AA-20","AA-4","MI","AA-19","AA-5","AA-6","WI","MA","AA-17","AA-7","AA-8","AA-16","AA-15","AA-14","AA-9","AA-10","AA-11","AA-12","AA-13","MS","PA","OH","IND","KS","KY","MO","TN","NC","SC","AR","GA","MP","AL","FL"),name="Location code")
+dev.off()
+
+pdf("Graph/LonHo_nat.pdf",height=9,width=9)
+ggplot(pop_nat, aes(x=Longitude, y=Ho)) + ylab("Observed Heterozygosity")+  
+  theme_bw()+ theme(legend.position="bottom",legend.direction="horizontal")+
+  geom_point(aes(color=factor(PopID)),shape=shape, size=4)+
+    geom_errorbar(aes(ymin=Ho-Ho_C, ymax=Ho+Ho_C), width=.2)+
+  scale_color_discrete(breaks=c("AA-2","AA-1","NB1","TR-QB","BN-ON","MN-ON","MN-2","AA-3","AA-20","AA-4","MI","AA-19","AA-5","AA-6","WI","MA","AA-17","AA-7","AA-8","AA-16","AA-15","AA-14","AA-9","AA-10","AA-11","AA-12","AA-13","MS","PA","OH","IND","KS","KY","MO","TN","NC","SC","AR","GA","MP","AL","FL"),name="Location code")
+dev.off()
+```
+
+
+Test for significance between ranges
+```{r}
+library(lme4)
+library(PMCMR)
+shapiro.test(popstat_all$Fis)
+shapiro.test(popstat_all$AR)
+test<-aov(popstat_all$Fis~popstat_all$Range*popstat_all$N)
+test1<-aov(popstat_all$AR~popstat_all$Range*popstat_all$N)
+summary(test1)
+kruskal.test(popstat_all$Fis~popstat_all$Range)
+kruskal.test(popstat_all$AR~popstat_all$Range)
+posthoc.kruskal.nemenyi.test(popstat_all$AR~popstat_all$Range)
+```
+
+
+Plot results
+```{r}
+pdf("Graph/HeHo.pdf",height=3,width=3)
+ggplot(heho, aes(x=Range, y=H)) + ylab("Heterozygosity")+  
+  geom_boxplot(aes(fill=heho$Level))+  theme_bw() +
+  theme(legend.justification=c(1,1), legend.position=c(1.1,1.2), legend.text   = element_text( size = 8), axis.title.x = element_text( size=9), axis.text.x  = element_text(size=8,angle=10), axis.title.y = element_text( size=9), axis.text.y  = element_text(size=8)) +scale_fill_discrete(name="",breaks=c("Hs","Ho"),
+  labels=c("Expected","Observed"))
+dev.off()
+
+pdf("Graph/all_rich.pdf",height=3,width=3)
+ggplot(popstat_all, aes(x=Range, y=AR)) + ylab("Allelic richness")+ theme_bw()+ geom_boxplot(outlier.shape=NA) + #avoid plotting outliers twice
+  geom_jitter(position=position_jitter(width=.1, height=0))+
+theme(axis.title.x = element_text(size=9), axis.text.x  = element_text(size=8,angle=10), axis.title.y = element_text( size=9), axis.text.y  = element_text(size=8))
+dev.off()
+
+pdf("_Graph/FIS_all.pdf",height=3,width=3)
+ggplot(popstat_all, aes(x=Range, y=Fis)) + ylab("Inbreeding coefficient")+ theme_bw()+ geom_boxplot(outlier.shape=NA) + #avoid plotting outliers twice
+  geom_jitter(position=position_jitter(width=.1, height=0))+
+theme(axis.title.x = element_text(size=9), axis.text.x  = element_text(size=8,angle=10), axis.title.y = element_text( size=9), axis.text.y  = element_text(size=8))
+dev.off()
+
+
+ggplot(popstat_all, aes(x=Range, y=HE)) + ylab("Expected Heterozygosity")+geom_boxplot(outlier.shape=NA) + #avoid plotting outliers twice
+  geom_jitter(position=position_jitter(width=.1, height=0))
+
+ggplot(popstat_all, aes(x=Range, y=HO)) + ylab("Observed Heterozygosity")+geom_boxplot(outlier.shape=NA) + #avoid plotting outliers twice
+  geom_jitter(position=position_jitter(width=.1, height=0))
+```
+
+
+```{r}
+popstat_all<-read.table("popstat.txt", header=TRUE)
+popstat_h<-read.table("popstat_hierfstat.txt", header=TRUE)
+
+ggplot(popstat_all, aes(x=Range, y=FIS)) + ylab("FIS")+geom_boxplot(outlier.shape=NA) +
+  geom_jitter(position=position_jitter(width=.1, height=0))
+ggplot(popstat_h, aes(x=Range, y=Fis)) + ylab("FIS")+geom_boxplot(outlier.shape=NA) +
+  geom_jitter(position=position_jitter(width=.1, height=0))
+ggplot(popstat_all, aes(x=Range, y=FIS)) + ylab("HO")+geom_boxplot(outlier.shape=NA) +
+  geom_jitter(position=position_jitter(width=.1, height=0))
+ggplot(popstat_h, aes(x=Range, y=Fis)) + ylab("Ho")+geom_boxplot(outlier.shape=NA) +
+  geom_jitter(position=position_jitter(width=.1, height=0))
+```
+
+===
+Compare between ranges (first code ranges as pop). Can't do this according to Kay as I am not accounting for popiulation structure. Therefor, I will get different overall values if I pool all individuals together. 
+```{r}
+allr@pop<-allr@other[,3]
+base_range<-basic.stats(allr)
+
+write.table(base_range$Fis,"loc-range_Fis.txt")
+
+rich_range<-allelic.richness(allr,min.n=NULL,diploid=TRUE)
+write.table(rich_allr,file="rich_range.txt")
+
+n.ind.samp_allr<-base$n.ind.samp
+write.table(base_range$n.ind.samp,file="nindsamp_range.txt")
+
+```
+
+===
+
+```{r}
+library("ape") # To visualize the tree using the "nj" function
+library("magrittr")
+library("phyclust")
+pdf("Graph/try3.pdf", width=20, height=60)
+aboot(all, dist = provesti.dist, sample = 2000, tree = "nj", cutoff = 50)
+dev.off()
+
+set.seed(999)
+all %>% 
+  genind2genpop(pop = ~Range/Pop) %>%
+ aboot(cutoff = 50, quiet = FALSE, sample = 10, distance=provesti.dist)
+
+
+all_gp<-genind2genpop(all,pop = ~Range/Pop)
+gp_tree<-aboot(all_gp,cutoff = 50, quiet = FALSE, sample = 1000, distance=provesti.dist)
+cols <- rainbow(4)
+pdf("Graph/unjTree_pops.pdf", width=20, height=60)
+plotnj(gp_tree,show.tip.label = TRUE, cex = 1.5, font = 2, lab4ut="axial") #tip.color = cols[all@other$range], 
+dev.off()
+
+pdf("Graph/try3.pdf", width=20, height=60)
+plot.phylo(gp_tree, cex = 0.8, font = 2, adj = 0,label.offset = 0.0125)#, tip.color = cols[all@other$range]
+dev.off()
+
+pdf("Graph/try4.pdf", width=20, height=60)
+plotnj(gp_tree,show.tip.label = TRUE, cex = 0.8, font = 2, adj = 0, tip.color = cols[all@other$range],
+           label.offset = 0.0125)
+dev.off()
+```
