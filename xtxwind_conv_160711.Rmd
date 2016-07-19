@@ -1,0 +1,245 @@
+Convergence between outlier windows
+===  
+
+> Script by Lotte van Boheemen  
+
+Below code will calculating the number of outliers per sliding window as follows:  
+- Exlude windows without outlier SNPs (Yeaman & Hodgins et al. 2016)
+- Calculate the expected frequency of outlier SNPs per number of SNPs in a window:  p = ∑_i(a_i/n_i) (for each range) (Yeaman & Hodgins et al. 2016)
+- Calculate the upper 90% CI of the binomial distribution (for each range)
+- Check which windows fall 90% CI of the binomial distribution (for each range): top-candidate-outlier windows
+- Check overlap in top-candidate-outlier windows between ranges
+
+---  
+
+> Update 1-7-16: Code includes qbinom estimates and plots to the same graphs
+
+
+```{r, include=F}
+library("knitr")
+library("dplyr")
+library("plyr")
+library(binom)
+opts_knit$set(root.dir = '/Users/lottevanboheemen/Documents/Monash/PhD/Analyses/Data')
+```
+
+
+Read in data
+```{r}
+# Outliers are top 5% of data
+results_na95 <- read.table("xtxna_250-500_top95")
+results_eu95 <- read.table("xtxeu_250-500_top95")
+results_au95 <- read.table("xtxau_250-500_top95")
+
+# Outliers are top 1% of data
+results_na99 <- read.table("xtxna_250-500_top99")
+results_eu99 <- read.table("xtxeu_250-500_top99")
+results_au99 <- read.table("xtxau_250-500_top99")
+
+# Same with smaller slide
+results50_na95 <- read.table("xtxna_250-500_top95")
+results50_eu95 <- read.table("xtxeu_250-500_top95")
+results50_au95 <- read.table("xtxau_250-500_top95")
+results50_na99 <- read.table("xtxna_250-500_top99")
+results50_eu99 <- read.table("xtxeu_250-500_top99")
+results50_au99 <- read.table("xtxau_250-500_top99")
+```
+
+---   
+
+**Calculate the upper 95% CI of the binomial distribution**  
+*Note: Yeaman & Hodgins et al. (2016) us qbinom() to determine 99.99th percentile. Here I opted for CI instead as it is more inclusive of distribution of rest of data*
+
+```{r}
+topcan.binom <- function(dat, output){
+  
+  sdat <- subset(dat,num.outlier > 0) # exclude windows without outliers
+ # sdat <- subset(sdat,num.SNPs > 1) # exclude windows with less than 2 SNPs
+
+  set.seed(0)
+  nsims <- 10000
+  
+  #proportion of outliers per total number of SNPs per window
+  sdat$prop.outlier <- sdat$num.outlier / sdat$num.SNPs 
+  
+  #Calculate the expected frequency of outlier SNPs per number of SNPs in a window:  p = ∑_i(a_i/n_i)
+  p <- sum(sdat$prop.outlier)/nrow(sdat)
+  
+  maxn <- max(sdat$num.SNPs)
+  n <- seq(0, maxn, by = 1)
+
+  
+  #define method used to calculate upper 95% binomial CI
+  my.method <- c("wilson")
+  my.method <- my.method[sort.list(my.method)]
+  coverage <- matrix(NA, nrow=length(n), ncol=length(my.method))
+  ci.lower <- ci.upper <- matrix(NA, ncol=length(my.method), nrow=length(n))
+  
+  # simulate y data and 95% CI interval
+  for(i in 1:length(n)){
+    y <- rbinom(nsims, n[i], p)
+    ll <- binom.confint(n[i]*p, n[i], conf.level=.95, method=my.method)$lower
+    ul <- binom.confint(n[i]*p, n[i], conf.level=.95, method=my.method)$upper
+    ci.lower[i,] <- ll
+    ci.upper[i,] <- ul
+    
+    # move the data into a workable dataframe
+    for(j in 1:length(my.method)){
+      sig <- length(y[y/n[i] <= ul[j] & y/n[i] >= ll[j]])
+      coverage[i,j] <- sig/nsims
+    }
+  }
+  
+  # calculate upper 95% CI for observed data and push in dataframe
+  for(i in 1:length(sdat$num.SNPs)){
+   sdat$test[i] <- binom.confint(sdat$num.SNPs[i]*p, sdat$num.SNPs[i], conf.level=.95, method = my.method)$upper
+   sdat$test2[i] <- sdat$test[i] * sdat$num.SNPs[i]
+  }
+
+  # Check which windows fall above the 95% CI of the binomial distribution (for each range): top-candidate-outlier windows
+  sdat$topcan <- (sdat$test <= sdat$prop.outlier)
+  
+  # Plot results
+  par(mfrow=c(1,2))
+  #plot(sdat$num.outlier ~ sdat$num.SNPs,  xlab= "Number of SNPs per window", ylab="Number of XTX outlier SNPs per window")
+  
+  plot(sdat$prop.outlier ~ sdat$num.SNPs,  col = as.numeric(sdat$topcan + 1), xlab= "Number of SNPs per window", ylab="Proportion of XTX outliers")
+
+  for(k in 1:ncol(coverage)){
+  #lines(n, ci.lower[,k], col=k, lwd=1)
+  lines(n, ci.upper[,k], col=k, lwd=1)
+  }
+    
+  
+  ##Script KAY:
+  #totsnp1 <- tapply (in_super_pine$snp_count,list (in_super_pine$test_name),sum)
+  # totout1 <- tapply (in_super_pine$outlier_count, list (in_super_pine$test_name),sum)
+  # expect1 <- data.frame (totout1 / totsnp1)
+  
+  # calculate quantiles
+  sdat$p3 <- qbinom (0.99, sdat$num.SNPs, p)
+  # Check which windows fall above the expected quantile distribution (for each range): top-candidate-outlier windows
+  sdat$topcan_q <- (sdat$p3 <= sdat$num.outlier)
+  coverage <- matrix(NA, nrow=length(n), ncol=length(my.method))
+  q.upper <- matrix(NA, ncol=length(my.method), nrow=length(n))
+   
+  # simulate y data and 99% quantile
+  for(i in 1:length(n)){
+    y <- rbinom(nsims, n[i], p)
+    ul <- qbinom(.99, n[i], p)
+    q.upper[i,] <- ul
+
+    # move the data into a workable dataframe
+    for(j in 1:1){
+      sig <- length(y[y/n[i] <= ul[j]])
+      coverage[i,j] <- sig/nsims
+    }
+  }
+
+  plot(sdat$num.outlier ~ sdat$num.SNPs,  col = as.numeric(sdat$topcan_q + 1), xlab= "Number of SNPs per window", ylab="Number of XTX outliers")
+  
+    for(k in 1:ncol(coverage)){
+  #lines(n, ci.lower[,k], col=k, lwd=1)
+  lines(n, q.upper[,k], col=k, lwd=1)
+  }
+
+    write.table(sdat, file = output)
+  return(subset(sdat, topcan_q == "TRUE"))
+  
+
+}
+```
+
+```{r}
+topcan.binom(results_na95, "sres250-500_na95")
+topcan.binom(results_eu95, "sres250-500_eu95")
+topcan.binom(results_au95, "sres250-500_au95")
+
+topcan.binom(results_na99, "sres250-500_na99")
+topcan.binom(results_eu99, "sres250-500_eu99")
+topcan.binom(results_au99, "sres250-500_au99")
+
+topcan.binom(results50_na95, "sres50-500_na95")
+topcan.binom(results50_eu95, "sres50-500_eu95")
+topcan.binom(results50_au95, "sres50-500_au95")
+topcan.binom(results50_na99, "sres50-500_na99")
+topcan.binom(results50_eu99, "sres50-500_eu99")
+topcan.binom(results50_au99, "sres50-500_au99")
+```
+
+
+===
+
+**Overlap in top-candidate outlier windows between ranges**
+
+```{r}
+tc_na95 <- read.table("sres_na95")
+tc_na95 <- subset(tc_na95, topcan == "TRUE")
+tc_na95$sub1 <- paste(tc_na95$contig, tc_na95$win.start, sep="__")
+
+tc_na99 <- read.table("sres_na99")
+tc_na99 <- subset(tc_na99, topcan == "TRUE")
+tc_na99$sub1 <- paste(tc_na99$contig, tc_na99$win.start, sep="__")
+
+tc_eu95 <- read.table("sres_eu95")
+tc_eu95 <- subset(tc_eu95, topcan == "TRUE")
+tc_eu95$sub1 <- paste(tc_eu95$contig, tc_eu95$win.start, sep="__")
+
+tc_eu99 <- read.table("sres_eu99")
+tc_eu99 <- subset(tc_eu99, topcan == "TRUE")
+tc_eu99$sub1 <- paste(tc_eu99$contig, tc_eu99$win.start, sep="__")
+
+tc_au95 <- read.table("sres_au95")
+tc_au95 <- subset(tc_au95, topcan == "TRUE")
+tc_au95$sub1 <- paste(tc_au95$contig,tc_au95$win.start, sep="__")
+
+tc_au99 <- read.table("sres_au99")
+tc_au99 <- subset(tc_au99, topcan == "TRUE")
+tc_au99$sub1 <- paste(tc_au99$contig,tc_au99$win.start, sep="__")
+
+sres99_naeu <- inner_join(tc_na99, tc_eu99, by="sub1")
+sres95_naeu <- inner_join(tc_na95, tc_eu95, by="sub1")
+sres99_naeu
+sres95_naeu
+
+sres99_naau <- inner_join(tc_na99, tc_au99, by="sub1")
+sres95_naau <- inner_join(tc_na95, tc_au95, by="sub1")
+sres99_naau
+sres95_naau
+
+sres99_euau <- inner_join(tc_eu99, tc_au99, by="sub1")
+sres95_euau <- inner_join(tc_eu95, tc_au95, by="sub1")
+sres99_euau
+sres95_euau
+```
+---
+
+
+
+---
+
+===  
+
+- For *each* non-outlier, calculate test statistic W vs 10K background SNPs based on association values (can be XtX here?) 
+- For *each* outlier, calculate W vs 10K background SNPs
+- From W, calculate Z-scores as ```Z=(2W-n_1 n_2)/√(n_1 n_2 (n_1 +n_2+1)/3)```, where n_1 and n_2 are the sample sizes being compared
+- Calculate p-values based on Z-scores derived from each comparison
+
+- chi square to outlier and non-outliers
+> - What do we define as "background" SNPs (in YH16 non-top-candidates with orthology relationship identified --> is this important and how would I approach this)?  
+> - What is the difference between "background" SNPs and non-top-candidate genes? --> no excess of outliers --> bim=nomial test to identify windows with excess number of outliers
+> - How is n_2 different from 1 if W is calculated for each gene individually?  
+
+
+```{r}
+#wilcox.test()
+```
+
+
+---  
+
+**References**  
+
+Renaut, Sebastien, Gregory L. Owens, and Loren H. Rieseberg. "Shared selective pressure and local genomic landscape lead to repeatable patterns of genomic divergence in sunflowers." Molecular ecology 23.2 (2014): 311-324.
+
+Sam Yeaman, Kathryn A. Hodgins, Katie E. Lotterhos, Haktan Sure5, Simon Nadeau, Jon C. Degner, Kristin A. Nurkowski, Pia Smets, Tongli Wang, Laura K. Gray, Katharina J. Liepe, Andreas Hamann, Jason A. Holliday, Michael C. Whitlock, Loren H. Rieseberg, Sally N. Aitken. "Convergent local adaptation to climate in distantly related conifers". *Submitted to Nature (2016)*.

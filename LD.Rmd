@@ -1,0 +1,173 @@
+Calculate Linkage Disequilibrium of SNPs in table
+===  
+
+
+Load packages
+```{r, include=FALSE}
+library("knitr")
+library("dplyr")
+library("plyr")
+opts_knit$set(root.dir = '/Users/lottevanboheemen/Documents/Monash/PhD/Analyses/Data')
+```
+
+Read in datafile and reformat
+```{r}
+data <- read.table ("allsnp_filt240.table",header=T)
+data <- as.matrix(data)
+
+#convert N's to NA's:
+sub <- data[,3:ncol(data)]
+sub [sub == "N"] <- NA
+
+#set up arrays to manipulate; 'FALSE' will be converted to 'TRUE' if following certain conditions
+to_remove <- array (FALSE, nrow (sub))
+zero_let <- array (FALSE, nrow (sub))
+
+for (i in 1:nrow (data)){
+	un1 <- unique (sub[i,])
+	
+	# the SNP table is formated in such a way that all homozygotes are coded as A, C, T or G (and will be homozygote for that base)
+  hom1 <- un1[grep ("[A,C,T,G]",un1)]
+  
+  # heterozygotes in the SNP table are coded as below
+	het1 <- un1[grep ("[M,R,W,S,Y,K]",un1)]
+	
+	# check to make sure there are two or fewer homozygote types
+	if (length (hom1) == 2 && length(het1) == 1){
+		
+		# change the letters to numbers
+		sub[i,grep (hom1[1],sub[i,])] <- 0
+		zero_let [i] <- hom1[1]
+		sub[i,grep (hom1[2],sub[i,])] <- 2
+		
+		sub[i,grep (het1[1],sub[i,])] <- 1
+		
+	
+	} else if (length (hom1) == 1 && length(het1) == 1){
+				
+		# change the letters to numbers
+		sub[i,grep (hom1[1],sub[i,])] <- 0
+		zero_let [i] <- hom1[1]
+						
+		sub[i,grep (het1[1],sub[i,])] <- 1
+	
+	} else {
+		#multi-allelic, turn all to NA:
+	#	sub[i,1] <- rep (NA, ncol(sub))
+		to_remove [i] <- TRUE
+	}
+}
+
+#check how many SNPs will be removed
+sum(to_remove)
+
+# now, to_remove is an matrix with all the values which need to be removed. to_keep will be the opposite of that
+to_keep <- !(to_remove)
+out11 <- cbind (data[,1:2],sub)
+out12 <- out11[to_keep,]
+zero_let_out1 <- zero_let[to_keep]
+zero_let_out <- cbind (out12[,1:2],zero_let_out1)
+
+write.table (out12, "allrsnp240_LD_infile", row.names = F, col.names = F, quote = F)
+write.table (zero_let_out, "allrsnp240_LD_zeroletout", row.names = F, col.names = F, quote = F)
+```
+
+
+Calculate correlations between each pair of SNPs, based on Contig_location information
+```{r}
+
+# input file with column 1 contig, column 2 position and columns 3-482 as individuals
+input <- read.table ("allrsnp240_LD_infile")
+
+# concatenate contig and position seperated by __. This will be column 483
+input$sub1 <- paste (input[,1],input[,2],sep = "__")
+
+input<-input[,c(ncol(input),1:(ncol(input)-1))]
+
+#set sub1 to first column
+input[,c(ncol(data),1:(ncol(data)-1))]
+#this is the matrix of genotype calls for every SNP (row is a locus, col is an individual), with column 1 being location and column 2-474 being genotypes
+input_data <- cbind(input$sub1,input[,3:474])
+head(input_data[,1:3])
+
+#this is the list of contigs and positions for each genotype
+scafpos_good <- as.matrix (input$sub1)
+
+#this keeps the columns correct: 
+input_good <-data.matrix(input_data[,2:dim(input_data)[2]])
+
+# Check if R is able to handle the amount of data 2^31 is the maximum extent of each dimension of an array R is able to handle
+#(nrow(input_good)^2)*5 < 2^31
+#FALSE
+#(nrow(input_good)^2)*3 < 2^31
+#TRUE
+
+#make array to put the correlations
+results_out <- array (NA, c(((nrow (input_good))^2),3))
+count <- 0
+
+
+#loop through focal snp
+for (i in 1:nrow(input_good)){
+	
+#	loop through all SNPs
+	for (j in 1:nrow (input_good)){
+		if (i != j){
+		count <- count + 1
+		 results_out[count,3] <- cor (input_good[i,], input_good[j,], use = "pairwise.complete.obs")
+		results_out [count,1] <- as.character (scafpos_good[i,1])
+		results_out [count,2] <- as.character (scafpos_good[j,1])
+		}
+	}
+}
+```
+
+
+Below code crashes as the matrix is too large
+```{r}
+# input file with column 1 contig, column 2 position and columns 3-482 as individuals
+input <- read.table ("allrsnp48_LD_infile")
+
+# concatenate contig and position seperated by __. This will be column 483
+input$sub1 <- paste (input[,1],input[,2],sep = "__")
+
+#this is the matrix of genotype calls for every SNP (row is a locus, col is an individual), with column 1 being location and column 2-474 being genotypes
+input_data <- input[,2:474]
+head(input_data[,1:3])
+
+#this is the list of contigs and positions for each genotype
+scafpos_good <- as.matrix (input[,1:2])
+
+#this keeps the columns correct: 
+input_good <-data.matrix(input_data[,2:dim(input_data)[2]])
+
+# Check if R is able to handle the amount of data 2^31 is the maximum extent of each dimension of an array R is able to handle
+(nrow(input_good)^2)*5 < 2^31
+#FALSE
+(nrow(input_good)^2)*3 < 2^31
+#TRUE
+
+#make array to put the correlations
+results_out <- array (NA, c(((nrow (input_good))^2),5))
+count <- 0
+
+
+#loop through focal snp
+for (i in 1:nrow(input_good)){
+	
+#	loop through all SNPs
+	for (j in 1:nrow (input_good)){
+		if (i != j){
+		count <- count + 1
+		 results_out[count,5] <- cor (input_good[i,], input_good[j,], use = "pairwise.complete.obs")
+		results_out [count,1] <- as.character (scafpos_good[i,1])
+		results_out [count,2] <- as.character (scafpos_good[i,2])
+		results_out [count,3] <- as.character (scafpos_good[j,1])
+		results_out [count,4] <- as.character (scafpos_good[j,2])
+		}
+	}
+}
+
+
+write.table (results_out[1:count,],"tmp.txt",row.names = F, col.names = F, quote = F)
+```

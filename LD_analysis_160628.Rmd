@@ -1,0 +1,81 @@
+LD analyses
+===  
+
+> Script by Lotte van Boheemen  
+
+```{r, include=F}
+library("knitr")
+library("dplyr")
+library("plyr")
+opts_knit$set(root.dir = '/Users/lottevanboheemen/Documents/Monash/PhD/Analyses/Data')
+```
+
+---  
+
+Read in the data. Note that below LD is calculated within and not among scaffolds
+```{r}
+LDdata <- read.table("LD_results_out")
+colnames(LDdata) <- c("Scaf1","Loc1","Scaf2","Loc2","Corr")
+
+LDdata$Dist <- abs(LDdata$Loc2-LDdata$Loc1)
+```
+
+Plot the results
+```{r}
+plot(abs(LDdata$Corr)~LDdata$Dist ,xlim=c(0,1000))
+plot(abs(LDdata$Corr)~LDdata$Dist)
+LDdata$dist <- abs(LDdata$Loc1 - LDdata$Loc2)
+plot(abs(LDdata$Corr)~log(LDdata$Dist))
+abline(v=log(500)) # break-down of LD
+LDdata$absCorr <- abs(LDdata$Corr)
+a <- aggregate(absCorr ~ dist, data= LDdata, FUN=mean)
+plot(a$absCorr~ log(a$dist))
+plot(a$absCorr~ a$dist)
+
+```
+
+
+Read in outlier file
+```{r}
+xtxna <- read.table("xtxna_250-500_top99") # outlier window
+xtxna$sub1 <- paste (xtxna$contig,xtxna$loc.start,sep = "__")
+LDdata$sub1 <- paste(LDdata$Scaf1,LDdata$Loc1,sep="__")
+
+cdata <- read.table("refgenome_data.txt",header=T) # reference genome data
+xdat_na<-read.table("xtx_na",header=T) # xtx data native range
+x_na<-left_join(xdat_na,cdata,by="contig") 
+x_na$contig<-as.factor(x_na$contig)
+x_na$sub1 <- paste(x_na$contig,x_na$location,sep="__")
+x_na$myrank<-rank(x_na$xtx)/length(x_na$xtx)
+
+xdat_eu <- read.table("xtx_eurun1.txt",header=T)
+x_eu <- left_join(xdat_eu, cdata, by = "contig") # xtx data native range
+x_eu$contig <- as.factor(x_eu$contig)
+x_eu$sub1 <- paste(x_eu$contig,x_eu$location,sep="__")
+x_eu$myrank <-rank(x_eu$xtx)/length(x_eu$xtx)
+
+xdat_au <- read.table("xtx_au.txt",header=T)
+x_au <- left_join(xdat_au, cdata, by = "contig") # xtx data native range
+x_au$contig <- as.factor(x_au$contig)
+x_au$sub1 <- paste(x_au$contig,x_au$location,sep="__")
+x_au$myrank <-rank(x_au$xtx)/length(x_au$xtx)
+
+joined <- inner_join(xtxna,LDdata,by="sub1")
+joined2 <- inner_join(x_na,LDdata,by="sub1")
+joined3 <- inner_join(LDdata,x_eu,by="sub1")
+joined4 <- inner_join(LDdata,x_au,by="sub1")
+
+```
+
+
+Plot against distance, but have 2 colours, one = outlier, 1 is not
+
+Explore if LD is higher around outliers
+```{r}
+plot(joined$win.mean~abs(joined$Corr)) # LD versus outlier window mean (native range)
+str(joined2)
+plot(abs(joined2$Corr)~joined2$Dist,col=ifelse(joined2$myrank>=0.95,"red","black")) # LD versus dist, coloured by xtx values in native range
+plot(abs(joined2$Corr)~log(joined2$Dist),col=ifelse(joined2$myrank>=0.95,"red","black")) 
+plot(abs(joined3$Corr)~joined3$Dist,col=ifelse(joined3$myrank>=0.95,"red","black"))# LD versus xtx values in european range
+plot(abs(joined4$Corr)~joined4$Dist,col=ifelse(joined4$myrank>=0.95,"red","black"))# LD versus xtx values in Austlralian range
+```

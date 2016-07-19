@@ -1,0 +1,203 @@
+Convergence
+===
+
+> Script by Lotte van Boheemen
+
+
+```{r, include=F}
+library("knitr")
+library("dplyr")
+library("plyr")
+library("reshape")
+opts_knit$set(root.dir = '/Users/lottevanboheemen/Documents/Monash/PhD/Analyses/Data')
+```
+
+---  
+
+Read in data
+```{r}
+cdata <- read.table("refgenome_data.txt",header=T) #reference genome with all scaffold names and lenght
+xdat_na<-read.table("xtx_na", header=T) #snp table with scaffold names, location of SNPs and xtx values
+xdat_eu<-read.table("xtx_eu.txt", header=T) #snp table with scaffold names, location of SNPs and xtx values
+xdat_au <- read.table("xtx_au.txt", header=T)
+
+x_na<-left_join(xdat_na,cdata,by="contig")
+x_na$contig <- as.factor(x_na$contig)
+x_na$xtx_na <- x_na$xtx
+x_na$sub1 <- paste (x_na[,1],x_na[,2],sep = "__") # paste scaf and loc together so we can identify same SNPs in datasets
+hist(x_na$xtx)
+
+x_eu <- left_join(xdat_eu,cdata,by="contig")
+x_eu$contig<-as.factor(x_eu$contig)
+x_eu$xtx_eu <- x_eu$xtx
+x_eu$sub1 <- paste (x_eu[,1],x_eu[,2],sep = "__") # paste scaf and loc together so we can identify same SNPs in datasets
+hist(x_eu$xtx)
+
+x_au <- left_join(xdat_au, cdata, by = "contig") # xtx data native range
+x_au$contig <- as.factor(x_au$contig)
+x_au$xtx_au <- x_au$xtx
+x_au$sub1 <- paste(x_au$contig,x_au$location,sep="__")
+hist(x_au$xtx)
+
+x_naeu <- inner_join(x_eu,x_na,by="sub1") #merge the datafiles form paired ranges
+x_naau<- inner_join(x_au,x_na,by="sub1") #merge the datafiles form paired ranges
+x_euau<- inner_join(x_au,x_eu,by="sub1") #merge the datafiles form paired ranges
+```
+
+---   
+
+
+Following Renaut et al (2014)
+
+- Find SNPs present in both range paires
+- Calculate Pearson's correlation coefficient between XtX values for SNPs present in both range pairs
+- Group SNPs in 5% quantiles based on XtX values
+- Find overlapping patterns in quantiles between paired ranges
+
+Plot the values to get a correlation graph
+```{r}
+plot(x_naeu$xtx_na ~ x_naeu$xtx_eu)
+cor.test(x_naeu$xtx_na,x_naeu$xtx_eu,method="spearman")
+```
+
+Plot the values to get a correlation graph
+```{r}
+plot(x_naau$xtx_na~x_naau$xtx_au)
+cor.test(x_naau$xtx_na,x_naau$xtx_au,method="spearman")
+```
+
+Plot the values to get a correlation graph
+```{r}
+plot(x_euau$xtx_eu~x_euau$xtx_au)
+cor.test(x_euau$xtx_eu,x_euau$xtx_au,method="spearman")
+```
+
+Rank the SNPs based on the XtX values per range and bin the SNPs in each range based this ranking (binning is done on percentiles, not absolute numbers)
+```{r}
+x_naeu$myrank_na <- rank(x_naeu$xtx_na)/length(x_naeu$xtx_na)
+x_naeu$bin_na1 <- cut(x_naeu$myrank_na, 100, labels=1:100)
+x_naeu$bin_na5 <- cut(x_naeu$myrank_na, 20, labels=1:20)
+x_naeu$bin_na1 <- as.numeric(x_naeu$bin_na1)
+x_naeu$bin_na5 <- as.numeric(x_naeu$bin_na5)
+
+x_naeu$myrank_eu <- rank(x_naeu$xtx_eu)/length(x_naeu$xtx_eu)
+x_naeu$bin_eu1 <- cut(x_naeu$myrank_eu, 100, labels=1:100)
+x_naeu$bin_eu5 <- cut(x_naeu$myrank_eu, 20, labels=1:20)
+x_naeu$bin_eu1 <- as.numeric(x_naeu$bin_eu1)
+x_naeu$bin_eu5 <- as.numeric(x_naeu$bin_eu5)
+```
+
+```{r}
+x_naau$myrank_na <- rank(x_naau$xtx_na)/length(x_naau$xtx_na)
+x_naau$bin_na1 <- cut(x_naau$myrank_na, 100, labels=1:100)
+x_naau$bin_na5 <- cut(x_naau$myrank_na, 20, labels=1:20)
+x_naau$bin_na1 <- as.numeric(x_naau$bin_na1)
+x_naau$bin_na5 <- as.numeric(x_naau$bin_na5)
+
+x_naau$myrank_au<-rank(x_naau$xtx_au)/length(x_naau$xtx_au)
+x_naau$bin_au1 <- cut(x_naau$myrank_au, 100, labels=1:100)
+x_naau$bin_au5 <- cut(x_naau$myrank_au, 20, labels=1:20)
+x_naau$bin_au1 <- as.numeric(x_naau$bin_au1)
+x_naau$bin_au5 <- as.numeric(x_naau$bin_au5)
+
+```
+
+```{r}
+x_euau$myrank_eu<-rank(x_euau$xtx_eu)/length(x_euau$xtx_eu)
+x_euau$bin_eu1 <- cut(x_euau$myrank_eu, 100, labels=1:100)
+x_euau$bin_eu5 <- cut(x_euau$myrank_eu, 20, labels=1:20)
+x_euau$bin_eu1 <- as.numeric(x_euau$bin_eu1)
+x_euau$bin_eu5 <- as.numeric(x_euau$bin_eu5)
+
+x_euau$myrank_au<-rank(x_euau$xtx_au)/length(x_euau$xtx_au)
+x_euau$bin_au1 <- cut(x_euau$myrank_au, 100, labels=1:100)
+x_euau$bin_au5 <- cut(x_euau$myrank_au, 20, labels=1:20)
+x_euau$bin_au1 <- as.numeric(x_euau$bin_au1)
+x_euau$bin_au5 <- as.numeric(x_euau$bin_au5)
+```
+
+---  
+
+
+**Count for each bin how many SNPs for paired ranges fall in the same bin**
+
+```{r}
+bincount <- data.frame(bin = numeric(), scaf_pos = numeric())
+
+i = 1
+while(i <= nrow(x_naeu)){
+  if(x_naeu$bin_na1[i] == x_naeu$bin_eu1[i]){
+    bincount[i,] <- c(x_naeu$bin_na1[i], x_naeu$sub1[i])
+    }
+  i <- i + 1
+}
+
+bincount$bin <- as.numeric(bincount$bin)
+
+# subset for the bins with lowest diverged ortholog SNPs
+naeu_bin_1perc <- subset(bincount, bin == 1)
+
+# subset for the bins with the highest diverged ortholog SNPs
+naeu_bin_99perc <- subset(bincount,bin == 100)
+
+hist(bincount$bin, breaks=100)
+```
+
+
+Now, is this what we expect under completely random scenario?
+```{r}
+nrow(subset(bincount, bin >= 1)) # number of times paired ranges fall into the same bin
+nrow(bincount) # all pairwise comparisons; Expected number of SNPs in each quantile is size of quantile times total number of shared SNPs = 1% * 1% * 29317 = 2.9317 (following Renaut et al, 2014)
+binom.test(nrow(subset(bincount, bin >= 1)), nrow(bincount), 0.01^2) # test to see if observed number of matches is within binomial expectations
+```
+
+
+
+
+```{r}
+# split to go back into Scaffold and location
+naeu_bin_1perc = transform(naeu_bin_1perc, scaf_pos = colsplit(scaf_pos, split = "\\__", names = c('Scaffold', 'Location')))
+naeu_bin_99perc = transform(naeu_bin_99perc, scaf_pos = colsplit(scaf_pos, split = "\\__", names = c('Scaffold', 'Location')))
+
+#write.table(na_bin_2perc,"na_bin_2perc") not working
+#write.table(na_bin_98perc,"na_bin_98perc") not working
+```
+
+```{r}
+bincount <- data.frame(bin = numeric(), scaf_pos = numeric())
+
+i = 1
+while(i <= nrow(x_naau)){
+  if(x_naau$bin_na5[i] == x_naau$bin_au5[i]){
+    bincount[i,] <- c(x_naau$bin_na5[i], x_naau$sub1[i])
+    }
+  i <- i + 1
+}
+
+bincount$bin <- as.numeric(bincount$bin)
+
+# subset for the bins with lowest diverged ortholog SNPs
+naau_bin_5perc <- subset(bincount, bin == 1)
+
+# subset for the bins with the highest diverged ortholog SNPs
+naau_bin_95perc <- subset(bincount,bin == 20)
+
+hist(bincount$bin, breaks=20)
+
+nrow(subset(bincount, bin >= 1)) # number of times paired ranges fall into the same bin
+nrow(bincount) # all pairwise comparisons; Expected number of SNPs in each quantile is size of quantile times total number of shared SNPs = 5% * 5% * 2366 = 5.915 (following Renaut et al, 2014)
+binom.test(nrow(subset(bincount, bin >= 1)), nrow(bincount), 0.05^2) # test to see if observed number of matches is within binomial expectations
+```
+
+```{r}
+bincount = data.frame(bin=numeric())
+i = 1
+while(i <= nrow(x_euau)){
+  if(x_euau$bin_eu5[i] == x_euau$bin_au5[i]){
+    bincount[i,] = x_euau$bin_eu5[i]
+  }
+  i <- i + 1
+}
+hist(bincount$bin, breaks=20)
+```
+

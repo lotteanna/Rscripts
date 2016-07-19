@@ -1,0 +1,204 @@
+Outlier Analysis
+===
+
+> Code by Lotte van Boheemen
+
+The below code will do the following:
+- Look at basic distribution of the data  
+- Define what an outlier is  
+- Calculate number of outliers based on sliding window, where window size is set to a certain number of bases
+- Print out actual window size in bases (between first and last SNP in window)
+- Print out window size in SNPs (important if window length is limiting factor)
+- Print out number of outliers in SNPs
+- Plot distribution of outliers and actual window sizes within each provided data set (ranges)
+
+> Update 25-6-16: Code is streamlined to run as a function, plot most important graphs and output results, so that input data doesn't have to be changed inside the code
+
+
+```{r,include=FALSE}
+library("knitr")
+library("dplyr")
+library("plyr")
+library("dplyr")
+
+opts_knit$set(root.dir = '/Users/lottevanboheemen/Documents/Monash/PhD/Analyses/Data')
+```
+
+---
+
+**Read data**
+
+Refgenome_data.txt is a file containing all the contigs of the reference genome, so also regions in which no SNPs are called
+```{r}
+cdata <- read.table("refgenome_data.txt",header=T)
+
+#xtx_na contains xtx values averaged over 3 independent (different root) Bayenv2 runs using .5M iterations, for North-American sampling locations only
+xdat_na <- read.table("xtx_na",header=T)
+xdat_eu <- read.table("xtx_eu.txt",header=T)
+xdat_au <- read.table("xtx_au.txt",header=T)
+```
+
+
+Add contig length information to xtx data by combining matrices {dplyr}
+```{r}
+x_na <- left_join(xdat_na,cdata,by="contig")
+x_na$contig <- as.factor(x_na$contig)
+x_na$myrank <- rank(x_na$xtx)/length(x_na$xtx)
+x_na_100thperc <- (subset(x_na,myrank>=0.99))
+write.table(subset(x_na,myrank>=0.99),"x_na_100thperc")
+plot(x_na$xtx ~ x_na$myrank)
+abline(v=.99)
+
+x_eu <- left_join(xdat_eu, cdata,by="contig")
+x_eu$contig<-as.factor(x_eu$contig)
+x_eu$myrank <- rank(x_eu$xtx)/length(x_eu$xtx)
+x_eu_100thperc <- (subset(x_eu,myrank>=0.99))
+write.table(subset(x_eu,myrank>=0.99),"x_eu_100thperc")
+plot(x_eu$xtx ~ x_eu$myrank)
+abline(v=.99)
+
+x_au <- left_join(xdat_au, cdata,by="contig")
+x_au$contig <- as.factor(x_au$contig)
+x_au$myrank <- rank(x_au$xtx)/length(x_au$xtx)
+x_au_100thperc <- (subset(x_au,myrank>=0.99))
+write.table(x_au_100thperc,"x_au_100thperc")
+plot(x_au$xtx ~ x_au$myrank)
+abline(v=.99)
+```
+
+Calculate  stats
+```{r}
+#average length of each contig
+summary(cdata$length)
+
+# Calculate xtx outliers
+summary(x_na$xtx)
+summary(x_eu$xtx)
+summary(x_au$xtx)
+```
+
+---  
+
+Outlier window where slide is based on position on the contig (so not SNP).
+
+```{r}
+#window length in bases
+win.length <- 500
+# slide in bases
+slide <- 50
+# define outlier value
+#top <- 0.99
+
+outlier.window <- function(data, output, top){
+  
+  top <- top
+  ##Define what an outlier is, based on 99th percentile:
+  
+  par(mfrow=c(2,2))
+  
+  #show xtx frequency distribution
+  hist(data$xtx)
+  
+  data$Klength <- data$length/1000
+  
+  # plot xtx vs length contig
+  plot(data$xtx ~ data$Klength,xlab="Scaffold length (Kb)", ylab = "SNP XtX values")
+  
+  #identify the top percentile by ranking all the data according to their percentile ranks
+  data$myrank<-rank(data$xtx)/length(data$xtx)
+  
+  #Check the distribution of percentiles vs xtx values
+  plot(data$xtx~data$myrank, xlab = "Ranked XtX values", ylab = "XtX values")
+  
+  
+  ## run the main part of the outlier window function:
+  
+  # create a vector including names of each contig for which SNPs have been found
+  cont <- levels(factor(data$contig)) 
+  
+  # prepare the space for results to be written to
+  results <- data.frame(SNPs=numeric(),contig=numeric(),win.start=numeric(),loc.start = numeric(), win.end = numeric(), index = numeric(), num.SNPs = numeric(), win.mean = numeric(), current.window = numeric(), num.outlier = numeric())
+  
+  #set index for loops, this is the index of SNP within each contig
+  i <- 1
+  #set index for results, this is the index of window passed threshold
+  j <- 1
+  #set index for contigs
+  k <- 1
+  # set index for number of SNPs within each window (incrementing until set window length). l is a variable increasing in size to fit the maximum number it can reach depending on window length. i+l is the index of the last SNP in the window. l + 1 is the window size in number of SNP. 
+  l <- 0
+  
+  # Loop through each contig, stop the loop at the final contig
+  while(k <= length(cont)){
+    
+    # vector with xtx values for all SNPs in each contig
+    x <- data$xtx[data$contig==cont[k]]
+    
+    # vector with location information for all SNPs in each contig
+    y <- data$location[data$contig==cont[k]] 
+    
+    # vector with percentile ranks for each SNP based on xtx values
+    z <- data$myrank[data$contig==cont[k]]
+  
+    # set start at first location within contig
+    win.start <- y[i]
+    
+    # number of SNPs in contig
+    snps <- length(x)
+  
+    #  Loop through all values within a contig, don't go past last value within the contig (all restrictions below are different ways of saying the same. However, the function doesn't work without all restrictions)
+    while(i <= snps && (win.start + win.length) <= y[snps] && y[i] < (win.start+win.length)) {
+      
+      # set end position
+      win.end <- win.start + win.length
+      
+      
+      # add SNPs to the window until the temporary window is the maximum threshold it could be: not exceeding last and not exceeding maximum numbers of SNPs in window set by user
+      while(y[i+l] <= win.end && (i+l)<=snps){
+        l <- l + 1
+      }
+      
+      # move l back before the threshold
+      l <- l - 1
+      
+      # calculate the number of SNPs in the window
+      test <- length(x[i:(i+l)])
+      current.window <- (y[l+i] - y[i])
+      num.outlier <- sum(z[i:(i+l)] >= top)
+      win.mean <- sum(x[i:(i+l)])/(l + 1)
+      results[j, ] <- c(test,cont[k],win.start,y[i],win.end,i,(l+1), win.mean, current.window, num.outlier)
+  
+        win.start <- win.start + slide
+        while(y[i] < win.start && i < snps ){
+          i <- i + 1
+        }
+        
+        j <- j + 1
+        l <- 0
+      }
+      
+      i <- 1
+      k <- k + 1 
+    }
+
+  results$num.outlier <- as.numeric(results$num.outlier)
+  results$current.window <- as.numeric(results$current.window)
+  results$win.mean <- as.numeric(results$win.mean)
+  results$num.SNPs <- as.numeric(results$num.SNPs)
+  hist(results$current.window, breaks = 50)
+
+   write.table(results, file = output) 
+}
+```
+
+Call function for the different datasets
+```{r}
+outlier.window(x_na, "xtxna_50-500_top95",.95)
+outlier.window(x_eu, "xtxeu_50-500_top95",.95)
+outlier.window(x_au, "xtxau_50-500_top95",.95)
+
+outlier.window(x_na, "xtxna_50-500_top99",.99)
+outlier.window(x_eu, "xtxeu_50-500_top99",.99)
+outlier.window(x_au, "xtxau_50-500_top99",.99)
+```
+

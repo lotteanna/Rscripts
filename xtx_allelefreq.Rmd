@@ -1,0 +1,98 @@
+Population descriptions
+========================================================
+
+Script by Lotte van Boheemen
+
+
+Load in data and read STRUCTURE infiles
+```{r, include=FALSE}
+library(adegenet) #read.structure & basic stats
+library(hierfstat) #pairwise Fst
+library(maps)
+library(mapdata)
+library(maptools)  #for shapefiles
+library(mapplots)
+library(scales)
+
+
+allr <- read.structure("allr473_allsnp48.stru", n.ind=473, n.loc=30420, onerowperind=FALSE, col.lab=1, col.pop=2, row.marknames=1,NA.char="-9", pop=85, ask=FALSE, quiet=FALSE)
+```
+
+
+```{r}
+allr_gp <- genind2genpop(allr)
+allelefreq_plocus_ppop  <- makefreq(allr_gp)
+
+allelefreq_plocus_ppop [,grep("SC2", names(allelefreq_plocus_ppop))]
+
+#write and read to workable document
+write.table(allelefreq_plocus_ppop, "allelefreq_plocus_ppop")
+test <- read.table("allelefreq_plocus_ppop")
+```
+
+```{r}
+names(select(test , contains("SC2ABSE_1684_1")))
+
+info <- read.table("allr_473_popinfo.txt")
+SC2ABSE_1684_1 <- cbind(info,test[,names(select(test , contains("SC2ABSE_1684_1")))])
+SC2ABSE_1684_1[complete.cases(SC2ABSE_1684_1[,7:8]),]
+```
+
+Setting up graphics device
+```{r}
+quartz()
+```
+
+
+Load map (this can better be drawn for every specific part I want to plot)
+```{r}
+map(database="worldHires",  xlim=c(-110,-60), ylim=c(30,55)) #North America
+map(database="worldHires",  xlim=c(-1,30), ylim=c(42,58)) #Europe
+map(database="worldHires",  xlim=c(149,156), ylim=c(-38,-25)) #Australia
+map(database="worldHires",  xlim=c(-110,156), ylim=c(-38,60)) #world
+```
+
+```{r}
+points(SC2ABSE_1684_1$V6, SC2ABSE_1684_1$V5)
+lats <- SC2ABSE_1684_1$V5
+long <- SC2ABSE_1684_1$V6
+
+#SC2ABSE_1684_1_295177
+Q <- SC2ABSE_1684_1[,7]
+Q <- na.omit(Q)
+P <- SC2ABSE_1684_1[,8]
+P <- na.omit(P)
+#N<-sqrt(q_allr_K2$Sample_size*0.02)
+lab = SC2ABSE_1684_1$V2
+for(i in 1:83) {
+                add.pie(z=c(Q[i], P[i]), x=long[i], y=lats[i],  radius=.3,
+                labels=lab[i], cex=0.7, label.dist=2, clockwise=FALSE, 
+                col=c(alpha("orange", 0.5), alpha("blue", 0.5)))
+}
+
+#SC2ABSE_1684_1_295232
+Q <- SC2ABSE_1684_1[,9]
+Q <- na.omit(Q)
+P <- SC2ABSE_1684_1[,10]
+P <- na.omit(P)
+#N<-sqrt(q_allr_K2$Sample_size*0.02)
+lab = SC2ABSE_1684_1$V2
+for(i in 1:81) {
+                add.pie(z=c(Q[i], P[i]), x=long[i], y=lats[i],  radius=.3,
+                labels=lab[i], cex=0.7, label.dist=2, clockwise=FALSE, 
+                col=c(alpha("orange", 0.5), alpha("blue", 0.5)))
+}
+
+#SC2ABSE_1684_1_295233
+Q <- SC2ABSE_1684_1[,11]
+Q <- na.omit(Q)
+P <- SC2ABSE_1684_1[,12]
+P <- na.omit(P)
+#N<-sqrt(q_allr_K2$Sample_size*0.02)
+lab = SC2ABSE_1684_1$V2
+for(i in 1:79) {
+                add.pie(z=c(Q[i], P[i]), x=long[i], y=lats[i],  radius=.3,
+                labels=lab[i], cex=0.7, label.dist=2, clockwise=FALSE, 
+                col=c(alpha("orange", 0.5), alpha("blue", 0.5)))
+}
+```
