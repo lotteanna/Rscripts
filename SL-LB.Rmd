@@ -1,0 +1,585 @@
+Phenotypic analyses Greenhouse SMARTER collections
+===
+
+
+**Read in libraries**
+---
+```{r, include=F}
+library("knitr")
+library("dplyr")
+library("plyr")
+library(vegan)
+library(usdm)
+library(ggfortify)
+library(nlme)
+library(lmerTest)
+library(lme4)
+library(mvpart) # for MRT, package needs to be installed from github using devtools::install_github("cran/mvpart")
+library(visreg)
+library(gridExtra)
+library(Hmisc) # for rcorr
+opts_knit$set(root.dir = '/Users/lottevanboheemen/Documents/Monash/PhD/Analyses/Data', warning=FALSE, message=FALSE)
+```
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+```
+
+
+**Read in data**
+---
+
+NB: all traits are labeled 'T_' and all environmental variables are labeled 'E_' to easily distinguish between them in downstream analyses
+
+```{r}
+#SampleID	                Code for plant sample
+#Mom	                    Code for maternal line
+#Pop	                    Code for population of collection of mother
+#SMARTcode                SMARTER sampling location ID
+#Range	                  Continent of provenance
+#Treatment	              Treatment of the sample. C = Control experiment a, watered 2x/day; D = Drought experiment a, watered on average every 1.5 day 
+#T_fem_day	              First recorded day of female flowering (number of days after second transplant)
+#T_male_day	              First recorded day of male flowering  (number of days after second transplant)
+#T_pol_day	              First recorded day of pollen production (number of days after second transplant)
+#T_die_day	              Number of days after second transplant no racemes produced pollen
+#T_Branches	              Number of branches from main stem. Only branches ending in leaves are  counted
+#T_Racemes	              number of racemes
+#T_Raceme_length_longest	length of longest raceme. Did not take length of 'main' raceme, as in many cases discrimination was impossible
+#T_Longest_leaf	          Length of longest leaf in mm. Longest leaf might have died/fallen off due to scenescence
+#T_Stem_width_mum	        width of stem at base, in micro meter
+#T_male_weight	          Dry weight of racemes in milligrams
+#T_plant_weight	          Dry weight of above-ground biomass in grams, including seeds, excluding racemes
+#T_plant_noseed	          Dry weight of above-ground biomass in grams, excluding seeds, excluding racemes
+#T_root_weights	          Dry weight of below-ground biomass in grams
+#T_seed_weight_tot	      Dry total weight of all seeds in milligrams
+#T_seed_20	              Dry weight of 20 seeds in milligrams
+#T_germ	                  Proportion of maternal seeds germinated
+#T_momseed_mg	            Average seed weight of maternal line
+#T_tot_biom               Total biomass plant (mg). Note this was measured in grams, but converted to mg for comparisons with fitness measures
+#T_fem_length             Length of female function flowering (first observed day female structure to first observed day ripe seeds)
+#T_male_length            Length of male function flowering (first observed day pollen production to first observed day racemes dying)
+#T_fl_start               Start of flowering, either first day of female structures or first day of pollen production
+#T_flower_length          Length of flowering season, first flowering structure - ripe seeds/racemes dying
+#T_seeds_tot              Estimate of total number of seeds, calculated from total seed weight and weight of 20 seeds
+#T_fit_all                Weight of male and female structures (mg)
+#T_Sla                    Specific leaf area (leaf weight (mg)/leaf area(10xcm2))
+#T_sexrat_weight          Weight all seeds/weight all racems
+#T_sexrat_numweight       Number of seeds/weight all racemes
+#T_inv_fem                Weight all seeds/total plant biomass
+#T_inv_mal                Weight all racemes/total plant biomass
+#T_rootshoot_rat          Weight roots/weight shoots
+#T_maxHeight_cm           Maximum height achieved during growing season (says cm but is in mm)
+#T_MaxSlope_cm_Day        Max growth rate (in mm per day....)      
+#T_InflxPt_Ht_cm          Height attained at half annual growth (mm)
+#T_LinearGrowth_Days      Duration of maximum growth rate 
+##For control treatment only:
+#T_Peaks                  Number of phenolic peaks >50kmAU
+#T_A17.4                  mAU under curve at 17.4 (we don't know what molecule each curve represents)
+#T_A17.8
+#T_A18.3
+#T_A18.6
+#T_A18.8
+#T_A21.5
+#T_A21.9
+#T_A23.8
+#T_PeakArea               Total area under all peaks >350kmAU             
+#T_Trichome      
+##other columns are transformations of trait variables to achieve normal distributions (_sq is square root, _lg is logarithmic)
+
+smart <- read.table("SMARTER_LBphen.txt", header=T)
+smart_C <- smart[which(smart$Treatment=="C"),] # Control treatment (watered twice a day)
+smart_D <- smart[which(smart$Treatment=="D"),]  # Drought treeatment (watered every 1.5 days)
+
+smart_mean <- aggregate(smart, by= list(smart$Treatment, smart$Pop), FUN = mean, na.rm=T) #means of each pop by treatment
+colnames(smart_mean)[1:2] <- c("Treatment", "Pop")
+smart_mean <- smart_mean[,-c(3:8)]
+d<- smart[,1:2]
+d<- distinct(d) # remove all duplicate rows
+smart_mean <- left_join(smart_mean,d, by="Pop") # add Range info to dataframe
+```
+
+Join the phenotypic and climatic data
+```{r}
+# BIO1 = Annual Mean Temperature
+# BIO2 = Mean Diurnal Range (Mean of monthly (max temp - min temp))
+# BIO3 = Isothermality (BIO2/BIO7) (* 100)
+# BIO4 = Temperature Seasonality (standard deviation *100)
+# BIO5 = Max Temperature of Warmest Month
+# BIO6 = Min Temperature of Coldest Month
+# BIO7 = Temperature Annual Range (BIO5-BIO6)
+# BIO8 = Mean Temperature of Wettest Quarter
+# BIO9 = Mean Temperature of Driest Quarter
+# BIO10 = Mean Temperature of Warmest Quarter
+# BIO11 = Mean Temperature of Coldest Quarter
+# BIO12 = Annual Precipitation
+# BIO13 = Precipitation of Wettest Month
+# BIO14 = Precipitation of Driest Month
+# BIO15 = Precipitation Seasonality (Coefficient of Variation)
+# BIO16 = Precipitation of Wettest Quarter
+# BIO17 = Precipitation of Driest Quarter
+# BIO18 = Precipitation of Warmest Quarter
+# BIO19 = Precipitation of Coldest Quarter
+clim <- read.table("clim.txt", header=T)
+clim$E_alt_all_sq <- sqrt(clim$E_alt_all)
+sc_mean <- left_join(smart_mean, clim, by="Pop")
+sc_mean_C <- sc_mean[which(sc_mean$Treatment=="C"),]
+sc_mean_D <- sc_mean[which(sc_mean$Treatment=="D"),]
+```
+
+
+**Select environmental variables based on VIF**
+---
+Climatic variables were selected favouring mean values over extremes, quarterly over monthly and no temperature/precipitation interaction (e.g. precipitation in warmest month).
+```{r}
+# Temperature seasonality
+vif(sc_mean_C[c("E_bio4_all", "E_bio3_all", "E_bio7_all", "E_bio2_all")])
+vif(sc_mean_C[c("E_bio4_all", "E_bio2_all")])
+# Temperature
+vif(sc_mean_C[c("E_bio1_all", "E_bio10_all", "E_bio11_all")])
+vif(sc_mean_C[c("E_bio10_all", "E_bio11_all")])
+# Precipitation seasonality = is only bio 15
+# Precipitation
+vif(sc_mean_C[c("E_bio12_all","E_bio16_all","E_bio17_all")])
+vif(sc_mean_C[c("E_bio16_all","E_bio17_all")])
+```
+
+---
+
+**1c)	Calculate final PC for traits**
+---
+
+```{r}
+#PCA with TRANSFORMED TRAITS
+smartC_pca <- prcomp(na.omit(sc_mean_C[46:75]), scale=T) 
+autoplot(smartC_pca,loadings=T, loadings.label=T, shape=F, label.label="SMARTcode",data=na.omit(sc_mean_C[46:76]))
+
+#PCA with TRANSFORMED TRAITS, Drought treatment doesn't have phenolics/trichome data
+smartD_pca <- prcomp(na.omit(sc_mean_D[46:65]), scale=T) 
+autoplot(smartD_pca,loadings=T, loadings.label=T, shape=F, label.label="SMARTcode", data=na.omit(sc_mean_D[c(46:65,76)]))
+
+# Find out how many PCs explain most variation
+summary(smartC_pca)
+summary(smartD_pca)
+```
+
+**Calculate PCA for climate**
+---
+
+```{r}
+climsel_meanC <- sc_mean_C[c("Pop","SMARTcode","E_Latitudeabs","E_bio4_all", "E_bio2_all",  "E_bio10_all", "E_bio11_all", "E_bio16_all",  "E_bio17_all", "E_alt_all_sq")]
+
+climselC_pca <- prcomp(climsel_meanC[3:10], scale=T)
+autoplot(climselC_pca, data=climsel_meanC, loadings=T, loadings.label=T, shape=F, label.label="SMARTcode", loadings.label.size=7)
+summary(climselC_pca)
+
+#with standarisation --> better solution for climate
+climselCst_pca <- prcomp(wisconsin(climsel_meanC[,3:10]+500), scale=T)
+autoplot(climselCst_pca, data=climsel_meanC,  loadings=T, loadings.label=T, shape=F, label.label="SMARTcode", loadings.label.size=7)
+summary(climselCst_pca)
+```
+
+
+**4a)	Phenotypic responses to experimental treatments, boxplots**
+---
+
+```{r}
+#Size measures
+s1 <-ggplot(aes(y= sqrt(T_Branches), x = Treatment), data=sc_mean) + geom_boxplot()
+s2 <-ggplot(aes(y= sqrt(T_Racemes), x = Treatment), data=sc_mean) + geom_boxplot()
+s3 <-ggplot(aes(y= T_Raceme_length_longest, x = Treatment), data=sc_mean) + geom_boxplot()
+s4 <-ggplot(aes(y= log(T_Longest_leaf), x = Treatment), data=sc_mean) + geom_boxplot()
+s5 <-ggplot(aes(y= T_Stem_width_mum, x = Treatment), data=sc_mean) + geom_boxplot()
+s6 <-ggplot(aes(y= sqrt(T_maxHeight_cm), x = Treatment), data=sc_mean) + geom_boxplot()
+s7 <-ggplot(aes(y= sqrt(T_tot_biom), x = Treatment), data=sc_mean) + geom_boxplot()
+grid.arrange( s1, s2,s3,s4,ncol=2)
+grid.arrange(s5,s6,s7, ncol=2)
+
+#Sex-ratio
+r1 <-ggplot(aes(y= T_sexrat_weight_lg, x = Treatment), data=sc_mean) + geom_boxplot()
+r2 <-ggplot(aes(y= T_sexrat_numweight_lg, x = Treatment), data=sc_mean) + geom_boxplot()
+grid.arrange( r1, r2, ncol=2)
+
+#Physiological measures
+p1 <-ggplot(aes(y= T_Sla, x = Treatment), data=sc_mean) + geom_boxplot()
+p2 <-ggplot(aes(y= T_Peaks, x = Treatment), data=sc_mean) + geom_boxplot()
+p3 <-ggplot(aes(y= T_A17.4_lg, x = Treatment), data=sc_mean) + geom_boxplot()
+p4 <-ggplot(aes(y= T_A17.8_lg, x = Treatment), data=sc_mean) + geom_boxplot()
+p5 <-ggplot(aes(y= T_A18.3_lg, x = Treatment), data=sc_mean) + geom_boxplot()
+p6 <-ggplot(aes(y= T_A18.6_lg, x = Treatment), data=sc_mean) + geom_boxplot()
+p7 <-ggplot(aes(y= T_A18.8_lg, x = Treatment), data=sc_mean) + geom_boxplot()
+p8 <-ggplot(aes(y= T_A21.5_lg, x = Treatment), data=sc_mean) + geom_boxplot()
+p9 <-ggplot(aes(y= T_A21.9_lg, x = Treatment), data=sc_mean) + geom_boxplot()
+p10 <-ggplot(aes(y= T_A23.8_lg, x = Treatment), data=sc_mean) + geom_boxplot()
+p11 <-ggplot(aes(y= T_PeakArea_sq, x = Treatment), data=sc_mean) + geom_boxplot()
+p12 <-ggplot(aes(y= T_Trichome_log, x = Treatment), data=sc_mean) + geom_boxplot()
+grid.arrange(p1,p2,p3,p4,p5,p6,ncol=2)
+grid.arrange(p7,p8,p9,p10,p11,p12,ncol=2)
+
+#Phenology measures
+# all flowering start, end and length of flower season
+ph1 <- ggplot(aes(y= T_fl_start, x = Treatment), data=sc_mean) + geom_boxplot()
+ph2 <- ggplot(aes(y= T_flower_length_lg, x = Treatment), data=sc_mean) + geom_boxplot()
+# female flowering start, end and length of female flower season
+ph3 <- ggplot(aes(y= T_fem_day, x = Treatment), data=sc_mean) + geom_boxplot()
+ph4 <- ggplot(aes(y= T_fem_length_sq, x = Treatment), data=sc_mean) + geom_boxplot()
+# male flowering start, end and length of male flower season
+ph5 <- ggplot(aes(y= T_pol_day, x = Treatment), data=sc_mean) + geom_boxplot()
+ph6 <- ggplot(aes(y= T_male_length_sq, x = Treatment), data=sc_mean) + geom_boxplot()
+# senescence
+ph7 <- ggplot(aes(y= T_die_day_lg, x = Treatment), data=sc_mean) + geom_boxplot()
+grid.arrange(ph1,ph2,ph3,ph4,ncol=2)
+grid.arrange(ph5,ph6,ph7,ncol=2)
+
+#Investment
+i1 <- ggplot(aes(y= T_rootshoot_lg, x = Treatment), data=sc_mean) + geom_boxplot()
+i2 <- ggplot(aes(y= T_seed_20_lg, x = Treatment), data=sc_mean) + geom_boxplot()
+i3 <-ggplot(aes(y= T_inv_mal_sq, x = Treatment), data=sc_mean) + geom_boxplot()
+i4 <-ggplot(aes(y= T_inv_fem_sq, x = Treatment), data=sc_mean) + geom_boxplot()
+grid.arrange(i1,i2,i3,i4,ncol=2)
+
+#Growth measures
+g1<- ggplot(aes(y= T_MaxSlope_cm_Day, x = Treatment), data=sc_mean) + geom_boxplot()
+g2 <- ggplot(aes(y= T_LinearGrowth_Days_sq, x = Treatment), data=sc_mean) + geom_boxplot()
+g3 <- ggplot(aes(y= T_InflxPt_Day_sq, x = Treatment), data=sc_mean) + geom_boxplot()
+ grid.arrange(g1,g2,g3,ncol=2)
+
+#Fitness
+f1 <- ggplot(aes(y= T_fit_all, x = Treatment), data=sc_mean) + geom_boxplot()
+f2 <- ggplot(aes(y= T_seed_weight_tot_sq, x = Treatment), data=sc_mean) + geom_boxplot()
+f3 <- ggplot(aes(y= T_seeds_tot_sq, x = Treatment), data=sc_mean) + geom_boxplot()
+f4 <- ggplot(aes(y= T_male_weight_sq, x = Treatment), data=sc_mean) + geom_boxplot()
+grid.arrange(f1,f2,f3,f4,ncol=2)
+
+#Germination (Treatment has no meaning as these measures were taken before treatment assignment)
+ge1 <- ggplot(aes(y= T_momseed_mg, x = Treatment), data=sc_mean) + geom_boxplot()
+ge2 <- ggplot(aes(y= T_germ, x = Treatment), data=sc_mean) + geom_boxplot()
+grid.arrange(ge1,ge2,ncol=2)
+```
+
+
+*b. Phenotypic responses to both continent & treatment*
+---
+
+As we are not including climatic variables here, we can use individual values and correct for population. 
+
+*Size measures*
+
+Branches
+```{r}
+mbran <-  lmer(T_Branches_sq ~ Treatment +(1 |Pop), data = smart)
+anova(mbran, type=3) # test hypothesis, type iii means that the order of fitted variables in models doesn't matter
+#plot(mbran)
+```
+
+Number of racemes
+```{r}
+mrac <-  lmer(T_Racemes_sq ~ Treatment +(1 |Pop), data = smart)
+anova(mrac, type=3) 
+#plot(mrac)
+```
+
+Length of the longest raceme
+```{r}
+mracl <-  lmer(T_Raceme_length_longest ~ Treatment +(1 |Pop), data = smart)
+anova(mracl, type=3) 
+#plot(mracl)
+```
+
+Length of the longest leaf
+```{r}
+mleaf <- lmer(T_Longest_leaf_lg ~ Treatment +(1 |Pop), data = smart)
+anova(mleaf, type=3) #no interaction
+#plot(mleaf)
+```
+
+Stem width
+```{r}
+mstem <-  lmer(T_Stem_width_mum ~ Treatment +(1 |Pop), data = smart)
+anova(mstem, type=3) 
+#plot(mstem)
+```
+
+Maximum height achieved
+```{r}
+mheight <-  lmer(T_maxHeight_cm_sq ~ Treatment +(1 |Pop), data = smart)
+anova(mheight, type=3) 
+#plot(mheight)
+```
+
+Total biomass
+```{r}
+mbiom <-  lmer(T_tot_biom_sq ~ Treatment +(1 |Pop), data = smart)
+anova(mbiom, type=3) 
+#plot(mbiom)
+```
+
+*Sex-ratio*
+
+```{r}
+msrweight <-  lmer(T_sexrat_weight_lg ~ Treatment +(1 |Pop), data = smart)
+anova(msrweight, type=3) 
+#plot(msrweigh2t)
+```
+
+Sex-ratio calculated as number of seeds (female function) vs weight of male (male function)
+```{r}
+msrnum <-  lmer(T_sexrat_numweight_lg ~ Treatment +(1 |Pop), data = smart)
+anova(msrnum, type=3)
+#plot(msrnum2)
+```
+
+*Phenology*
+First day of pollen production (male function)
+```{r}
+mpol <-  lmer(T_pol_day ~ Treatment +(1 |Pop), data = smart)
+anova(mpol, type=3) 
+#plot(mpol)
+```
+
+Length of male function flowering
+```{r}
+mmlen <-  lmer(T_male_length_sq ~ Treatment +(1 |Pop), data = smart)
+anova(mmlen, type=3) 
+#plot(mmlen)
+```
+
+First day of seed structures/styles (female function)
+```{r}
+mfem <-  lmer(T_fem_day ~ Treatment +(1 |Pop), data = smart)
+anova(mfem, type=3) 
+#plot(mfem)
+```
+
+Length of female function flowering
+```{r}
+mfeml <-  lmer(T_fem_length_sq ~ Treatment +(1 |Pop), data = smart)
+anova(mfeml, type=3) 
+#plot(mfeml)
+```
+
+Start of flowering
+```{r}
+mflo <-  lmer(T_fl_start ~ Treatment +(1 |Pop), data = smart)
+anova(mflo, type=3) 
+#plot(mflo)
+```
+
+Length of  flowering
+```{r}
+mflol <-  lmer(T_flower_length_lg ~ Treatment +(1 |Pop), data = smart)
+anova(mflol, type=3) 
+#plot(mflol)
+```
+
+First signs of scenescence
+```{r}
+mdie <-  lmer(T_die_day_lg ~ Treatment +(1 |Pop), data = smart)
+anova(mdie, type=3) 
+#plot(mdie)
+```
+
+*Investment*
+
+Seed weight of 20 seeds (lower means smaller seeds)
+```{r}
+mse20 <-  lmer(T_seed_20_lg ~ Treatment +(1 |Pop), data = smart)
+anova(mse20, type=3) 
+#plot(mse202)
+```
+
+Investment in male function
+```{r}
+minvm <-  lmer(T_inv_mal_sq ~ Treatment +(1 |Pop), data = smart)
+anova(minvm, type=3) 
+#plot(minvm)
+```
+
+Investment in female function
+```{r}
+minvf <-  lmer(T_inv_fem_sq ~ Treatment +(1 |Pop), data = smart)
+anova(minvf, type=3) 
+#plot(minvf)
+```
+
+Root-shoot ratio
+```{r}
+mrs <-  lmer(T_rootshoot_lg ~ Treatment +(1 |Pop), data = smart)
+anova(mrs, type=3) 
+#plot(mrs)
+```
+
+*Growth indexes*
+
+Day on which the maximum slope is achieved
+```{r}
+mmaxgroday <-  lmer(T_MaxSlope_cm_Day ~ Treatment +(1 |Pop), data = smart)
+anova(mmaxgroday, type=3) 
+#plot(mmaxgroday)
+```
+
+Length of linear growth
+```{r}
+mlingro <-  lmer(T_LinearGrowth_Days_sq ~ Treatment +(1 |Pop), data = smart)
+anova(mlingro, type=3) 
+#plot(mlingro)
+```
+
+Inflex point
+```{r}
+minfx <-  lmer(T_InflxPt_Day_sq ~ Treatment +(1 |Pop), data = smart)
+anova(minfx, type=3) 
+#plot(minfx)
+```
+
+*Fitness measures*
+
+Total fitness (in weigth)
+```{r}
+mfittot <-  lmer(T_fit_all ~ Treatment +(1 |Pop), data = smart)
+anova(mfittot, type=3) 
+#plot(mfittot)
+```
+
+Total number of seeds
+```{r}
+mseedtot <-  lmer(T_seeds_tot_sq ~ Treatment +(1 |Pop), data = smart)
+anova(mseedtot, type=3) 
+#plot(mseedtot)
+```
+
+Total weight of seeds
+```{r}
+mseedmg <-  lmer(T_seed_weight_tot_sq ~ Treatment +(1 |Pop), data = smart)
+anova(mseedmg, type=3) 
+#plot(mseedmg)
+```
+
+Total weight of male function
+```{r}
+msracmg <-  lmer(T_male_weight_sq ~ Treatment +(1 |Pop), data = smart)
+anova(msracmg, type=3) 
+#plot(msracmg)
+```
+
+*Germination measures*
+
+Weight of mom seeds
+```{r}
+mmom <-  lmer(T_momseed_mg ~ Treatment +(1 |Pop), data = smart)
+anova(mmom, type=3) 
+#plot(mmom)
+```
+
+Germination
+```{r}
+mgerm <-  lmer(T_germ ~ Treatment +(1 |Pop), data = smart)
+anova(mgerm, type=3) 
+#plot(mgerm)
+```
+
+*Plant physiological measures*
+
+Specific leaf area
+```{r}
+msla <-  lmer(T_Sla ~ Treatment +(1 |Pop), data = smart)
+anova(msla, type=3) 
+```
+
+
+ *d.	matrix of traits ~ all environmental variables in mrt*
+---
+
+All
+```{r}
+# have ALL (non-transformed) traits (BUT phenolics) explained by ALL (non-transformed) environmental variables (transformation is not important)
+test1a <- mvpart(data.matrix(sc_mean[3:34])~Treatment+ E_Latitudeabs +E_bio4_all + E_bio2_all+  E_bio10_all+ E_bio11_all+ E_bio16_all+E_bio17_all+ E_alt_all_sq, sc_mean, xv="none") 
+#summary(test1a)
+
+# have ALL traits explained by ALL environmental variables BUT latitude
+test1c<- mvpart(data.matrix(sc_mean[3:34])~  Treatment+E_bio4_all + E_bio2_all+  E_bio10_all+ E_bio11_all+ E_bio16_all+E_bio17_all+ E_alt_all_sq, sc_mean, xv="none") 
+#summary(test1b)
+```
+
+Control treatment only
+```{r}
+# have ALL traits explained by ALL environmental variables
+test2a <- mvpart(data.matrix(sc_mean_C[3:45])~ E_Latitudeabs +E_bio4_all + E_bio2_all+  E_bio10_all+ E_bio11_all+ E_bio16_all+E_bio17_all+ E_alt_all_sq, sc_mean_C,  xv="none") 
+#summary(test2a)
+```
+
+Drought treatment only
+```{r}
+# have ALL traits BUT phenolics explained by ALL environmental variables
+test3a <- mvpart(data.matrix(sc_mean_D[3:34])~  E_Latitudeabs +E_bio4_all + E_bio2_all+  E_bio10_all+ E_bio11_all+ E_bio16_all+E_bio17_all+ E_alt_all_sq, sc_mean_D, xv="none") 
+#summary(test3a)
+```
+
+
+Calculate relative fitness as population mean / total 
+---
+(for each range and treatment seperatedly) instead of individual values to avoid pseudoreplication (as per Maron et al., 2007)
+```{r}
+pc_meantrC_NA$T_rfit_all <- pc_meantrC_NA$T_fit_all/ mean(na.omit(pc_meantrC_NA$T_fit_all))
+pc_meantrC_NA$T_rpol <- pc_meantrC_NA$T_pol_day / mean(na.omit(pc_meantrC_NA$T_pol_day))
+pc_meantrC_NA$T_rmax_growth <- pc_meantrC_NA$T_maxHeight_cm / mean(na.omit(pc_meantrC_NA$T_maxHeight_cm))
+plot(pc_meantrC_NA$T_rfit_all,pc_meantrC_NA$T_rpol)
+anova(lm(T_rfit_all~T_rpol, data=pc_meantrC_NA))
+plot(pc_meantrC_NA$T_rfit_all~pc_meantrC_NA$T_rmax_growth)
+anova(lm(pc_meantrC_NA$T_rfit_all~pc_meantrC_NA$T_rmax_growth))
+summary(lm(pc_meantrC_NA$T_rfit_all~pc_meantrC_NA$T_rmax_growth))
+
+pc_meantrC_EU$T_rfit_all <- pc_meantrC_EU$T_fit_all/ mean(na.omit(pc_meantrC_EU$T_fit_all))
+pc_meantrC_EU$T_rpol <- pc_meantrC_EU$T_pol_day / mean(na.omit(pc_meantrC_EU$T_pol_day))
+pc_meantrC_EU$T_rmax_growth <- pc_meantrC_EU$T_maxHeight_cm / mean(na.omit(pc_meantrC_EU$T_maxHeight_cm))
+plot(pc_meantrC_EU$T_rfit_all~pc_meantrC_EU$T_rpol)
+plot(pc_meantrC_EU$T_rfit_all~pc_meantrC_EU$T_rmax_growth)
+
+pc_meantrC_AU$T_rfit_all <- pc_meantrC_AU$T_fit_all/ mean(na.omit(pc_meantrC_AU$T_fit_all))
+pc_meantrC_AU$T_rpol <- pc_meantrC_AU$T_pol_day / mean(na.omit(pc_meantrC_AU$T_pol_day))
+pc_meantrC_AU$T_rmax_growth <- pc_meantrC_AU$T_maxHeight_cm / mean(na.omit(pc_meantrC_AU$T_maxHeight_cm))
+plot(pc_meantrC_AU$T_rfit_all~pc_meantrC_AU$T_rpol)
+plot(pc_meantrC_AU$T_rfit_all~pc_meantrC_AU$T_rmax_growth)
+```
+
+```{r}
+phentrC_NA$T_rfit_all <- phentrC_NA$T_fit_all/ mean(na.omit(phentrC_NA$T_fit_all))
+phentrC_NA$T_rpol <- phentrC_NA$T_pol_day / mean(na.omit(phentrC_NA$T_pol_day))
+phentrC_NA$T_rmax_growth <- phentrC_NA$T_maxHeight_cm / mean(na.omit(phentrC_NA$T_maxHeight_cm))
+plot(phentrC_NA$T_rfit_all,phentrC_NA$T_rpol)
+anova(lm(T_rfit_all~T_rpol, data=phentrC_NA))
+plot(phentrC_NA$T_rfit_all~phentrC_NA$T_rmax_growth)
+anova(lm(phentrC_NA$T_rfit_all~phentrC_NA$T_rmax_growth))
+summary(lm(phentrC_NA$T_rfit_all~phentrC_NA$T_rmax_growth))
+
+phentrC_EU$T_rfit_all <- phentrC_EU$T_fit_all/ mean(na.omit(phentrC_EU$T_fit_all))
+phentrC_EU$T_rpol <- phentrC_EU$T_pol_day / mean(na.omit(phentrC_EU$T_pol_day))
+phentrC_EU$T_rmax_growth <- phentrC_EU$T_maxHeight_cm / mean(na.omit(phentrC_EU$T_maxHeight_cm))
+plot(phentrC_EU$T_rfit_all~phentrC_EU$T_rpol)
+plot(phentrC_EU$T_rfit_all~phentrC_EU$T_rmax_growth)
+
+phentrC_AU$T_rfit_all <- phentrC_AU$T_fit_all/ mean(na.omit(phentrC_AU$T_fit_all))
+phentrC_AU$T_rpol <- phentrC_AU$T_pol_day / mean(na.omit(phentrC_AU$T_pol_day))
+phentrC_AU$T_rmax_growth <- phentrC_AU$T_maxHeight_cm / mean(na.omit(phentrC_AU$T_maxHeight_cm))
+plot(phentrC_AU$T_rfit_all~phentrC_AU$T_rpol)
+plot(phentrC_AU$T_rfit_all~phentrC_AU$T_rmax_growth)
+```
+
+```{r}
+library(ape)
+NULLModel<- lme(volume ~ 1, data=dd, random=~1|popcode/plot ,method ="REML")
+varcomp(NULLModel, scale = TRUE, cum = FALSE)
+ 
+ 
+# To plot variance components as slices of a pie:
+slices <- varcomp(NULLModel, scale = TRUE, cum = FALSE)
+lbls <- c("population", "plot", "residual")
+pct <- round(slices/sum(slices)*100)
+lbls <- paste(lbls, pct,"%") # add percents to labels
+pie(slices,labels = lbls, col=rainbow(length(lbls)),
+    main="variation in plant volume")
+ ```
+ 
+```{r} 
+Als je alleen tussen vs. Binnen populaties wil weten wordt het:
+NULLModel<- lme(volume ~ 1, data=dd, random=~1|popcode,method ="REML")
+```
