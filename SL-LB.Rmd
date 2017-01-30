@@ -96,6 +96,14 @@ smart_mean <- smart_mean[,-c(3:8)]
 d<- smart[,1:2]
 d<- distinct(d) # remove all duplicate rows
 smart_mean <- left_join(smart_mean,d, by="Pop") # add Range info to dataframe
+
+smart_mean2 <- smart_mean %>% # remove populations not monitored in 2014
+  filter(!(Pop == "EU10")) %>%
+  filter(!(Pop == "EU17")) %>%
+  filter(!(Pop == "EU20"))
+
+sm2_C <- smart_mean2[which(smart_mean2$Treatment=="C"),] # Control treatment (watered twice a day)
+sm2_D <- smart_mean2[which(smart_mean2$Treatment=="D"),]  # Drought treeatment (watered every 1.5 days)
 ```
 
 Join the phenotypic and climatic data
@@ -285,20 +293,6 @@ anova(mracl, type=3)
 #plot(mracl)
 ```
 
-Length of the longest leaf
-```{r}
-mleaf <- lmer(T_Longest_leaf_lg ~ Treatment +(1 |Pop), data = smart)
-anova(mleaf, type=3) #no interaction
-#plot(mleaf)
-```
-
-Stem width
-```{r}
-mstem <-  lmer(T_Stem_width_mum ~ Treatment +(1 |Pop), data = smart)
-anova(mstem, type=3) 
-#plot(mstem)
-```
-
 Maximum height achieved
 ```{r}
 mheight <-  lmer(T_maxHeight_cm_sq ~ Treatment +(1 |Pop), data = smart)
@@ -326,56 +320,6 @@ Sex-ratio calculated as number of seeds (female function) vs weight of male (mal
 msrnum <-  lmer(T_sexrat_numweight_lg ~ Treatment +(1 |Pop), data = smart)
 anova(msrnum, type=3)
 #plot(msrnum2)
-```
-
-*Phenology*
-First day of pollen production (male function)
-```{r}
-mpol <-  lmer(T_pol_day ~ Treatment +(1 |Pop), data = smart)
-anova(mpol, type=3) 
-#plot(mpol)
-```
-
-Length of male function flowering
-```{r}
-mmlen <-  lmer(T_male_length_sq ~ Treatment +(1 |Pop), data = smart)
-anova(mmlen, type=3) 
-#plot(mmlen)
-```
-
-First day of seed structures/styles (female function)
-```{r}
-mfem <-  lmer(T_fem_day ~ Treatment +(1 |Pop), data = smart)
-anova(mfem, type=3) 
-#plot(mfem)
-```
-
-Length of female function flowering
-```{r}
-mfeml <-  lmer(T_fem_length_sq ~ Treatment +(1 |Pop), data = smart)
-anova(mfeml, type=3) 
-#plot(mfeml)
-```
-
-Start of flowering
-```{r}
-mflo <-  lmer(T_fl_start ~ Treatment +(1 |Pop), data = smart)
-anova(mflo, type=3) 
-#plot(mflo)
-```
-
-Length of  flowering
-```{r}
-mflol <-  lmer(T_flower_length_lg ~ Treatment +(1 |Pop), data = smart)
-anova(mflol, type=3) 
-#plot(mflol)
-```
-
-First signs of scenescence
-```{r}
-mdie <-  lmer(T_die_day_lg ~ Treatment +(1 |Pop), data = smart)
-anova(mdie, type=3) 
-#plot(mdie)
 ```
 
 *Investment*
@@ -408,28 +352,6 @@ anova(mrs, type=3)
 #plot(mrs)
 ```
 
-*Growth indexes*
-
-Day on which the maximum slope is achieved
-```{r}
-mmaxgroday <-  lmer(T_MaxSlope_cm_Day ~ Treatment +(1 |Pop), data = smart)
-anova(mmaxgroday, type=3) 
-#plot(mmaxgroday)
-```
-
-Length of linear growth
-```{r}
-mlingro <-  lmer(T_LinearGrowth_Days_sq ~ Treatment +(1 |Pop), data = smart)
-anova(mlingro, type=3) 
-#plot(mlingro)
-```
-
-Inflex point
-```{r}
-minfx <-  lmer(T_InflxPt_Day_sq ~ Treatment +(1 |Pop), data = smart)
-anova(minfx, type=3) 
-#plot(minfx)
-```
 
 *Fitness measures*
 
@@ -459,30 +381,6 @@ Total weight of male function
 msracmg <-  lmer(T_male_weight_sq ~ Treatment +(1 |Pop), data = smart)
 anova(msracmg, type=3) 
 #plot(msracmg)
-```
-
-*Germination measures*
-
-Weight of mom seeds
-```{r}
-mmom <-  lmer(T_momseed_mg ~ Treatment +(1 |Pop), data = smart)
-anova(mmom, type=3) 
-#plot(mmom)
-```
-
-Germination
-```{r}
-mgerm <-  lmer(T_germ ~ Treatment +(1 |Pop), data = smart)
-anova(mgerm, type=3) 
-#plot(mgerm)
-```
-
-*Plant physiological measures*
-
-Specific leaf area
-```{r}
-msla <-  lmer(T_Sla ~ Treatment +(1 |Pop), data = smart)
-anova(msla, type=3) 
 ```
 
 
@@ -577,9 +475,284 @@ pct <- round(slices/sum(slices)*100)
 lbls <- paste(lbls, pct,"%") # add percents to labels
 pie(slices,labels = lbls, col=rainbow(length(lbls)),
     main="variation in plant volume")
- ```
- 
-```{r} 
+```
+
+
 Als je alleen tussen vs. Binnen populaties wil weten wordt het:
+```{r} 
 NULLModel<- lme(volume ~ 1, data=dd, random=~1|popcode,method ="REML")
 ```
+
+6) Variance component analysis*
+---
+
+*a) all ranges*
+---
+```{r}
+#control
+varcomp(lme(T_Branches_sq ~ 1, data=na.omit(phentrC), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Longest_leaf_lg ~ 1, data=na.omit(phentrC), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Stem_width_mumtr ~ 1, data=na.omit(phentrC), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_maxHeight_cm_sq ~ 1, data=na.omit(phentrC), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_tot_biom_sq ~ 1, data=na.omit(phentrC), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_sexrat_weight_lg ~ 1, data=na.omit(phentrC), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_pol_daytr ~ 1, data=na.omit(phentrC), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_male_length_sq ~ 1, data=na.omit(phentrC), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_fem_daytr ~ 1, data=na.omit(phentrC), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_fem_length_sq ~ 1, data=na.omit(phentrC), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_fl_starttr ~ 1, data=na.omit(phentrC), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_flower_length_lg ~ 1, data=na.omit(phentrC), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_die_day_lg ~ 1, data=na.omit(phentrC), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_seed_20_lg ~ 1, data=na.omit(phentrC), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_inv_mal_sq ~ 1, data=na.omit(phentrC), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_inv_fem_sq ~ 1, data=na.omit(phentrC), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_rootshoot_lg ~ 1, data=na.omit(phentrC), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_MaxSlope_cm_Daytr ~ 1, data=na.omit(phentrC), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_InflxPt_Day_sq ~ 1, data=na.omit(phentrC), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_LinearGrowth_Days_sq ~ 1, data=na.omit(phentrC), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_InflxPt_Day_sq ~ 1, data=na.omit(phentrC), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_fit_alltr ~ 1, data=na.omit(phentrC), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_seeds_tot_sq ~ 1, data=na.omit(phentrC), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_seed_weight_tot_sq ~ 1, data=na.omit(phentrC), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_male_weight_sq ~ 1, data=na.omit(phentrC), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Racemes_sq ~ 1, data=na.omit(phentrC), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Raceme_length_longesttr ~ 1, data=na.omit(phentrC), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_momseed_mgtr ~ 1, data=na.omit(phentrC), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_germtr ~ 1, data=na.omit(phentrC), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Slatr ~ 1, data=na.omit(phentrC), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+
+#drought
+varcomp(lme(T_Branches_sq ~ 1, data=na.omit(phentrD), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Longest_leaf_lg ~ 1, data=na.omit(phentrD), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Stem_width_mumtr ~ 1, data=na.omit(phentrD), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_maxHeight_cm_sq ~ 1, data=na.omit(phentrD), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_tot_biom_sq ~ 1, data=na.omit(phentrD), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_sexrat_weight_lg ~ 1, data=na.omit(phentrD), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_pol_daytr ~ 1, data=na.omit(phentrD), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_male_length_sq ~ 1, data=na.omit(phentrD), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_fem_daytr ~ 1, data=na.omit(phentrD), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_fem_length_sq ~ 1, data=na.omit(phentrD), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_fl_starttr ~ 1, data=na.omit(phentrD), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_flower_length_lg ~ 1, data=na.omit(phentrD), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_die_day_lg ~ 1, data=na.omit(phentrD), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_seed_20_lg ~ 1, data=na.omit(phentrD), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_inv_mal_sq ~ 1, data=na.omit(phentrD), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_inv_fem_sq ~ 1, data=na.omit(phentrD), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_rootshoot_lg ~ 1, data=na.omit(phentrD), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_MaxSlope_cm_Daytr ~ 1, data=na.omit(phentrD), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_InflxPt_Day_sq ~ 1, data=na.omit(phentrD), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_LinearGrowth_Days_sq ~ 1, data=na.omit(phentrD), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_InflxPt_Day_sq ~ 1, data=na.omit(phentrD), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_fit_alltr ~ 1, data=na.omit(phentrD), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_seeds_tot_sq ~ 1, data=na.omit(phentrD), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_seed_weight_tot_sq ~ 1, data=na.omit(phentrD), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_male_weight_sq ~ 1, data=na.omit(phentrD), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Racemes_sq ~ 1, data=na.omit(phentrD), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Raceme_length_longesttr ~ 1, data=na.omit(phentrD), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_momseed_mgtr ~ 1, data=na.omit(phentrD), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_germtr ~ 1, data=na.omit(phentrD), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Slatr ~ 1, data=na.omit(phentrD), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+```
+
+*b) Native*
+---
+```{r}
+#control
+varcomp(lme(T_Branches_sq ~ 1, data=na.omit(phentrC_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Longest_leaf_lg ~ 1, data=na.omit(phentrC_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Stem_width_mumtr ~ 1, data=na.omit(phentrC_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_maxHeight_cm_sq ~ 1, data=na.omit(phentrC_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_tot_biom_sq ~ 1, data=na.omit(phentrC_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_sexrat_weight_lg ~ 1, data=na.omit(phentrC_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_pol_daytr ~ 1, data=na.omit(phentrC_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_male_length_sq ~ 1, data=na.omit(phentrC_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_fem_daytr ~ 1, data=na.omit(phentrC_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_fem_length_sq ~ 1, data=na.omit(phentrC_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_fl_starttr ~ 1, data=na.omit(phentrC_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_flower_length_lg ~ 1, data=na.omit(phentrC_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_die_day_lg ~ 1, data=na.omit(phentrC_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_seed_20_lg ~ 1, data=na.omit(phentrC_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_inv_mal_sq ~ 1, data=na.omit(phentrC_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_inv_fem_sq ~ 1, data=na.omit(phentrC_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_rootshoot_lg ~ 1, data=na.omit(phentrC_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_MaxSlope_cm_Daytr ~ 1, data=na.omit(phentrC_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_InflxPt_Day_sq ~ 1, data=na.omit(phentrC_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_LinearGrowth_Days_sq ~ 1, data=na.omit(phentrC_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_InflxPt_Day_sq ~ 1, data=na.omit(phentrC_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_fit_alltr ~ 1, data=na.omit(phentrC_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_seeds_tot_sq ~ 1, data=na.omit(phentrC_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_seed_weight_tot_sq ~ 1, data=na.omit(phentrC_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_male_weight_sq ~ 1, data=na.omit(phentrC_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Racemes_sq ~ 1, data=na.omit(phentrC_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Raceme_length_longesttr ~ 1, data=na.omit(phentrC_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_momseed_mgtr ~ 1, data=na.omit(phentrC_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_germtr ~ 1, data=na.omit(phentrC_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Slatr ~ 1, data=na.omit(phentrC_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+#drought
+varcomp(lme(T_Branches_sq ~ 1, data=na.omit(phentrD_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Longest_leaf_lg ~ 1, data=na.omit(phentrD_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Stem_width_mumtr ~ 1, data=na.omit(phentrD_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_maxHeight_cm_sq ~ 1, data=na.omit(phentrD_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_tot_biom_sq ~ 1, data=na.omit(phentrD_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_sexrat_weight_lg ~ 1, data=na.omit(phentrD_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_pol_daytr ~ 1, data=na.omit(phentrD_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_male_length_sq ~ 1, data=na.omit(phentrD_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_fem_daytr ~ 1, data=na.omit(phentrD_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_fem_length_sq ~ 1, data=na.omit(phentrD_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_fl_starttr ~ 1, data=na.omit(phentrD_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_flower_length_lg ~ 1, data=na.omit(phentrD_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_die_day_lg ~ 1, data=na.omit(phentrD_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_seed_20_lg ~ 1, data=na.omit(phentrD_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_inv_mal_sq ~ 1, data=na.omit(phentrD_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_inv_fem_sq ~ 1, data=na.omit(phentrD_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_rootshoot_lg ~ 1, data=na.omit(phentrD_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_MaxSlope_cm_Daytr ~ 1, data=na.omit(phentrD_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_InflxPt_Day_sq ~ 1, data=na.omit(phentrD_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_LinearGrowth_Days_sq ~ 1, data=na.omit(phentrD_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_InflxPt_Day_sq ~ 1, data=na.omit(phentrD_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_fit_alltr ~ 1, data=na.omit(phentrD_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_seeds_tot_sq ~ 1, data=na.omit(phentrD_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_seed_weight_tot_sq ~ 1, data=na.omit(phentrD_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_male_weight_sq ~ 1, data=na.omit(phentrD_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Racemes_sq ~ 1, data=na.omit(phentrD_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Raceme_length_longesttr ~ 1, data=na.omit(phentrD_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_momseed_mgtr ~ 1, data=na.omit(phentrD_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_germtr ~ 1, data=na.omit(phentrD_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Slatr ~ 1, data=na.omit(phentrD_NA), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+```
+
+*c) Europe*
+---
+```{r}
+phentr_EU <- phentr[which(phentr$Range=="Europe"),]
+varcomp(lme(T_Branches_sq ~ 1, data=na.omit(phentrC_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Longest_leaf_lg ~ 1, data=na.omit(phentrC_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Stem_width_mumtr ~ 1, data=na.omit(phentrC_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_maxHeight_cm_sq ~ 1, data=na.omit(phentrC_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_tot_biom_sq ~ 1, data=na.omit(phentrC_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_sexrat_weight_lg ~ 1, data=na.omit(phentrC_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_pol_daytr ~ 1, data=na.omit(phentrC_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_male_length_sq ~ 1, data=na.omit(phentrC_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_fem_daytr ~ 1, data=na.omit(phentrC_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_fem_length_sq ~ 1, data=na.omit(phentrC_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_fl_starttr ~ 1, data=na.omit(phentrC_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_flower_length_lg ~ 1, data=na.omit(phentrC_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_die_day_lg ~ 1, data=na.omit(phentrC_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_seed_20_lg ~ 1, data=na.omit(phentrC_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_inv_mal_sq ~ 1, data=na.omit(phentrC_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_inv_fem_sq ~ 1, data=na.omit(phentrC_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_rootshoot_lg ~ 1, data=na.omit(phentrC_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_MaxSlope_cm_Daytr ~ 1, data=na.omit(phentrC_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_InflxPt_Day_sq ~ 1, data=na.omit(phentrC_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_LinearGrowth_Days_sq ~ 1, data=na.omit(phentrC_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_InflxPt_Day_sq ~ 1, data=na.omit(phentrC_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_fit_alltr ~ 1, data=na.omit(phentrC_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_seeds_tot_sq ~ 1, data=na.omit(phentrC_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_seed_weight_tot_sq ~ 1, data=na.omit(phentrC_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_male_weight_sq ~ 1, data=na.omit(phentrC_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Racemes_sq ~ 1, data=na.omit(phentrC_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Raceme_length_longesttr ~ 1, data=na.omit(phentrC_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_momseed_mgtr ~ 1, data=na.omit(phentrC_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_germtr ~ 1, data=na.omit(phentrC_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Slatr ~ 1, data=na.omit(phentrC_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+
+##Drought
+varcomp(lme(T_Branches_sq ~ 1, data=na.omit(phentrD_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Longest_leaf_lg ~ 1, data=na.omit(phentrD_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Stem_width_mumtr ~ 1, data=na.omit(phentrD_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_maxHeight_cm_sq ~ 1, data=na.omit(phentrD_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_tot_biom_sq ~ 1, data=na.omit(phentrD_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_sexrat_weight_lg ~ 1, data=na.omit(phentrD_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_pol_daytr ~ 1, data=na.omit(phentrD_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_male_length_sq ~ 1, data=na.omit(phentrD_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_fem_daytr ~ 1, data=na.omit(phentrD_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_fem_length_sq ~ 1, data=na.omit(phentrD_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_fl_starttr ~ 1, data=na.omit(phentrD_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_flower_length_lg ~ 1, data=na.omit(phentrD_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_die_day_lg ~ 1, data=na.omit(phentrD_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_seed_20_lg ~ 1, data=na.omit(phentrD_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_inv_mal_sq ~ 1, data=na.omit(phentrD_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_inv_fem_sq ~ 1, data=na.omit(phentrD_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_rootshoot_lg ~ 1, data=na.omit(phentrD_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_MaxSlope_cm_Daytr ~ 1, data=na.omit(phentrD_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_InflxPt_Day_sq ~ 1, data=na.omit(phentrD_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_LinearGrowth_Days_sq ~ 1, data=na.omit(phentrD_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_InflxPt_Day_sq ~ 1, data=na.omit(phentrD_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_fit_alltr ~ 1, data=na.omit(phentrD_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_seeds_tot_sq ~ 1, data=na.omit(phentrD_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_seed_weight_tot_sq ~ 1, data=na.omit(phentrD_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_male_weight_sq ~ 1, data=na.omit(phentrD_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Racemes_sq ~ 1, data=na.omit(phentrD_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Raceme_length_longesttr ~ 1, data=na.omit(phentrD_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_momseed_mgtr ~ 1, data=na.omit(phentrD_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_germtr ~ 1, data=na.omit(phentrD_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Slatr ~ 1, data=na.omit(phentrD_EU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+```
+
+*d) Australia*
+---
+```{r}
+varcomp(lme(T_Branches_sq ~ 1, data=na.omit(phentrC_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Longest_leaf_lg ~ 1, data=na.omit(phentrC_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Stem_width_mumtr ~ 1, data=na.omit(phentrC_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_maxHeight_cm_sq ~ 1, data=na.omit(phentrC_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_tot_biom_sq ~ 1, data=na.omit(phentrC_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_sexrat_weight_lg ~ 1, data=na.omit(phentrC_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_pol_daytr ~ 1, data=na.omit(phentrC_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_male_length_sq ~ 1, data=na.omit(phentrC_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_fem_daytr ~ 1, data=na.omit(phentrC_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_fem_length_sq ~ 1, data=na.omit(phentrC_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_fl_starttr ~ 1, data=na.omit(phentrC_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_flower_length_lg ~ 1, data=na.omit(phentrC_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_die_day_lg ~ 1, data=na.omit(phentrC_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_seed_20_lg ~ 1, data=na.omit(phentrC_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_inv_mal_sq ~ 1, data=na.omit(phentrC_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_inv_fem_sq ~ 1, data=na.omit(phentrC_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_rootshoot_lg ~ 1, data=na.omit(phentrC_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_MaxSlope_cm_Daytr ~ 1, data=na.omit(phentrC_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_InflxPt_Day_sq ~ 1, data=na.omit(phentrC_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_LinearGrowth_Days_sq ~ 1, data=na.omit(phentrC_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_InflxPt_Day_sq ~ 1, data=na.omit(phentrC_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_fit_alltr ~ 1, data=na.omit(phentrC_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_seeds_tot_sq ~ 1, data=na.omit(phentrC_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_seed_weight_tot_sq ~ 1, data=na.omit(phentrC_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_male_weight_sq ~ 1, data=na.omit(phentrC_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Racemes_sq ~ 1, data=na.omit(phentrC_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Raceme_length_longesttr ~ 1, data=na.omit(phentrC_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_momseed_mgtr ~ 1, data=na.omit(phentrC_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_germtr ~ 1, data=na.omit(phentrC_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Slatr ~ 1, data=na.omit(phentrC_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+
+##Drought
+varcomp(lme(T_Branches_sq ~ 1, data=na.omit(phentrD_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Longest_leaf_lg ~ 1, data=na.omit(phentrD_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Stem_width_mumtr ~ 1, data=na.omit(phentrD_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_maxHeight_cm_sq ~ 1, data=na.omit(phentrD_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_tot_biom_sq ~ 1, data=na.omit(phentrD_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_sexrat_weight_lg ~ 1, data=na.omit(phentrD_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_pol_daytr ~ 1, data=na.omit(phentrD_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_male_length_sq ~ 1, data=na.omit(phentrD_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_fem_daytr ~ 1, data=na.omit(phentrD_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_fem_length_sq ~ 1, data=na.omit(phentrD_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_fl_starttr ~ 1, data=na.omit(phentrD_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_flower_length_lg ~ 1, data=na.omit(phentrD_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_die_day_lg ~ 1, data=na.omit(phentrD_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_seed_20_lg ~ 1, data=na.omit(phentrD_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_inv_mal_sq ~ 1, data=na.omit(phentrD_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_inv_fem_sq ~ 1, data=na.omit(phentrD_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_rootshoot_lg ~ 1, data=na.omit(phentrD_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_MaxSlope_cm_Daytr ~ 1, data=na.omit(phentrD_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_InflxPt_Day_sq ~ 1, data=na.omit(phentrD_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_LinearGrowth_Days_sq ~ 1, data=na.omit(phentrD_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_InflxPt_Day_sq ~ 1, data=na.omit(phentrD_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_fit_alltr ~ 1, data=na.omit(phentrD_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_seeds_tot_sq ~ 1, data=na.omit(phentrD_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_seed_weight_tot_sq ~ 1, data=na.omit(phentrD_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_male_weight_sq ~ 1, data=na.omit(phentrD_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Racemes_sq ~ 1, data=na.omit(phentrD_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Raceme_length_longesttr ~ 1, data=na.omit(phentrD_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_momseed_mgtr ~ 1, data=na.omit(phentrD_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_germtr ~ 1, data=na.omit(phentrD_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+varcomp(lme(T_Slatr ~ 1, data=na.omit(phentrD_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
+```
+
