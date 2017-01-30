@@ -756,3 +756,47 @@ varcomp(lme(T_germtr ~ 1, data=na.omit(phentrD_AU), random=~1|Pop ,method ="REML
 varcomp(lme(T_Slatr ~ 1, data=na.omit(phentrD_AU), random=~1|Pop ,method ="REML"), scale = TRUE, cum = FALSE)[[1]]
 ```
 
+
+Are there certain populations which do way worse? Europe analysis only
+
+```{r}
+smart <- read.table("popSmart.txt", header=T)
+pc_meanEU_smart <-left_join(pc_mean_EU, smart,by="Pop")
+pc_meanEU_smart$smart <- ifelse(is.na(pc_meanEU_smart$SMARTcode), "not-SMARTER","SMARTER")
+
+```
+
+```{r}
+  pdf("_Graph/_Greenhouse/traitvslat_smart.pdf")
+  #Height
+  ggplot(pc_meanEU_smart, aes(x=E_Latitudeabs, y=T_maxHeight_cm))+ geom_text(aes(label = Pop,col=as.factor(smart)), check_overlap = T, nudge_x= -0.03, nudge_y = 0.01)+ facet_wrap(~Treatment)+    geom_smooth(method=lm,se=TRUE, alpha=0.2) + theme_bw() + ylab("Maximum height (cm)")+ xlab("Absolute latitude")
+  #biomass
+ ggplot(pc_meanEU_smart, aes(x=E_Latitudeabs, y=T_tot_biom))+ geom_text(aes(label = Pop,col=as.factor(smart)), check_overlap = T, nudge_x= -0.03, nudge_y = 0.01)+ facet_wrap(~Treatment)+    geom_smooth(method=lm,se=TRUE, alpha=0.2) + theme_bw() + ylab("Total biomass (g)")+ xlab("Absolute latitude")
+  
+  ##Phenology
+  #First day of pollen production
+  ggplot(pc_meanEU_smart, aes(x=E_Latitudeabs, y=T_pol_day))+ geom_text(aes(label = Pop,col=as.factor(smart)), check_overlap = T, nudge_x= -0.03, nudge_y = 0.01)+ facet_wrap(~Treatment)+    geom_smooth(method=lm,se=TRUE, alpha=0.2) + theme_bw() + ylab("First day of pollen production")+ xlab("Absolute latitude")
+  #First day of pollen production
+  ggplot(pc_meanEU_smart, aes(x=E_Latitudeabs, y=T_fem_day))+ geom_text(aes(label = Pop,col=as.factor(smart)), check_overlap = T, nudge_x= -0.03, nudge_y = 0.01)+ facet_wrap(~Treatment)+    geom_smooth(method=lm,se=TRUE, alpha=0.2) + theme_bw() + ylab("First day of female function flowering")+ xlab("Absolute latitude")
+
+  #Growth
+  ggplot(pc_meanEU_smart, aes(x=E_Latitudeabs, y=T_MaxSlope_cm_Day))+ geom_text(aes(label = Pop,col=as.factor(smart)), check_overlap = T, nudge_x= -0.03, nudge_y = 0.01)+ facet_wrap(~Treatment)+    geom_smooth(method=lm,se=TRUE, alpha=0.2) + theme_bw() +ylab("Maximum growth (cm/day)")+ xlab("Absolute latitude")
+  
+  ##fitness
+  #all fitness
+  ggplot(pc_meanEU_smart, aes(x=E_Latitudeabs, y=T_fit_all))+ geom_text(aes(label = Pop,col=as.factor(smart)), check_overlap = T, nudge_x= -0.03, nudge_y = 0.01)+ facet_wrap(~Treatment)+    geom_smooth(method=lm,se=TRUE, alpha=0.2) + theme_bw() + ylab("Fitness (reproductive biomass (g)")+ xlab("Absolute latitude")
+  # # of seeds
+  ggplot(pc_meanEU_smart, aes(x=E_Latitudeabs, y=T_seeds_tot))+ geom_text(aes(label = Pop,col=as.factor(smart)), check_overlap = T, nudge_x= -0.03, nudge_y = 0.01)+ facet_wrap(~Treatment)+    geom_smooth(method=lm,se=TRUE, alpha=0.2) + theme_bw() + ylab("Female fitness (number of seeds)")+ xlab("Absolute latitude")
+  # weight of seeds
+  ggplot(pc_meanEU_smart, aes(x=E_Latitudeabs, y=T_seed_weight_tot))+ geom_text(aes(label = Pop,col=as.factor(smart)), check_overlap = T, nudge_x= -0.03, nudge_y = 0.01)+ facet_wrap(~Treatment)+    geom_smooth(method=lm,se=TRUE, alpha=0.2) + theme_bw()+ ylab("Female fitness (weight of seeds(mg))")+ xlab("Absolute latitude")
+  # number of racemes
+  ggplot(pc_meanEU_smart, aes(x=E_Latitudeabs, y=T_Racemes))+ geom_text(aes(label = Pop,col=as.factor(smart)), check_overlap = T, nudge_x= -0.03, nudge_y = 0.01)+ facet_wrap(~Treatment)+    geom_smooth(method=lm,se=TRUE, alpha=0.2) + theme_bw() + ylab("Male fitness (number of racemes)")+ xlab("Absolute latitude")
+  
+  # length of longest raceme
+  ggplot(pc_meanEU_smart, aes(x=E_Latitudeabs, y=T_Raceme_length_longest))+geom_text(aes(label = Pop,col=as.factor(smart)), check_overlap = T, nudge_x= -0.03, nudge_y = 0.01)+ facet_wrap(~Treatment)+    geom_smooth(method=lm,se=TRUE, alpha=0.2) + theme_bw() + ylab("Male fitness (lenght of longest raceme)")+ xlab("Absolute latitude")
+  # weight of raceme
+  ggplot(pc_meanEU_smart, aes(x=E_Latitudeabs, y=T_male_weight))+geom_text(aes(label = Pop,col=as.factor(smart)), check_overlap = T, nudge_x= -0.03, nudge_y = 0.01)+ facet_wrap(~Treatment)+    geom_smooth(method=lm,se=TRUE, alpha=0.2) + theme_bw() +  ylab("Male fitness (weight of racemes(mg))")+ xlab("Absolute latitude")
+  dev.off()
+```
+
+
