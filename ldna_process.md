@@ -52,7 +52,7 @@ if (file.exists(lis)){
 pdf(paste0("ld_",tmpfile,".pdf"))
 tryCatch(for(i in edge){
   tryCatch(for(j in phis){
-    tmp = extractClusters(ld_na, min.edges = i, plot.tree = TRUE, extract=TRUE, rm.COCs = T, phi=j)
+    tmp = extractClusters(ldfile, min.edges = i, plot.tree = TRUE, extract=TRUE, rm.COCs = T, phi=j)
     save(tmp, file=paste0(tmpfile,"_clus_",i,"_",j))
     sink(paste0("lists/",tmpfile,"_clus_",i,"_",j,".txt")); print(tmp$clusters);sink() 
     }, error = function(e) {an.error.occured <<- TRUE})
