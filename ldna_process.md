@@ -36,6 +36,12 @@ Dir <- paste0("LD/", tmpfile,"/")
 sums = "summs"
 lis = "lists"
 
+if (file.exists(Dir)){
+   print("dir exists")
+} else {
+    dir.create(file.path(Dir))
+}
+
 setwd(Dir)
 
 if (file.exists(sums)){
